@@ -44,7 +44,7 @@
 <h1>
 <a id="quick-start" class="anchor" href="#quick-start" aria-hidden="true"><span class="octicon octicon-link"></span></a>Quick Start</h1>
 
-<p>When SPLASH is your project classpath, you can write a self-contained application using the SPLASH API. Besides importing Spark packages, you also need to import the SPLASH package in scala, by typing:</p>
+<p>When SPLASH is in your project classpath, you can write a self-contained application using the SPLASH API. Besides importing Spark packages, you also need to import the SPLASH package in scala, by typing:</p>
 
 <div class="highlight highlight-scala"><pre><span class="pl-k">import</span> <span class="pl-v">splash.</span><span class="pl-v">ParametrizedRDD</span>
 <span class="pl-k">import</span> <span class="pl-v">splash.</span><span class="pl-v">StreamProcessContext</span>
@@ -76,7 +76,8 @@
 
   <span class="pl-k">for</span>(i <span class="pl-k">&lt;</span><span class="pl-k">-</span> <span class="pl-c1">0</span> until x_key.length)
   {
-    <span class="pl-k">val</span> <span class="pl-en">delta</span> <span class="pl-k">=</span> weight <span class="pl-k">*</span> learningRate <span class="pl-k">/</span> math.sqrt( t <span class="pl-k">+</span> <span class="pl-c1">1</span> ) <span class="pl-k">*</span> y <span class="pl-k">/</span> (<span class="pl-c1">1.0</span> <span class="pl-k">+</span> math.exp(y<span class="pl-k">*</span>sum)) <span class="pl-k">*</span> x_value(i)
+    <span class="pl-k">val</span> <span class="pl-en">delta</span> <span class="pl-k">=</span> weight <span class="pl-k">*</span> learningRate <span class="pl-k">/</span> math.sqrt( t <span class="pl-k">+</span> <span class="pl-c1">1</span> ) <span class="pl-k">*</span> y  <span class="pl-k">/</span> (<span class="pl-c1">1.0</span> <span class="pl-k">+</span> math.exp(y<span class="pl-k">*</span>sum)) <span class="pl-k">*</span> x_value(i)
+
     <span class="pl-c">// increase the shared variable by delta</span>
     sharedVar.update(<span class="pl-s"><span class="pl-pds">"</span>w:<span class="pl-pds">"</span></span> <span class="pl-k">+</span> x_key(i), delta)
   }
