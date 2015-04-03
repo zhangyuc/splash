@@ -51,6 +51,7 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
   
   def getTotalTimeEllapsed = totalTimeEllapsed
   def getSelectedSampleWeight = proposedWeight
+  def numOfPartition = numOfWorkset
   
   def map[U: ClassTag](func : (T, ParameterSet, ParameterSet) => U) = {
     val list = new ListBuffer[U]

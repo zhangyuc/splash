@@ -34,4 +34,25 @@ class StreamProcessContext {
     }
     spc
   }
+  
+  def set(key:String, value:Double) = {
+    val spc = new StreamProcessContext
+    spc.numOfThread = this.numOfThread
+    spc.reweight = this.reweight
+    spc.applyAdaptiveReweighting = this.applyAdaptiveReweighting
+    
+    if(key.equals("num.of.thread")){
+      spc.numOfThread = value.toInt
+    }
+    if(key.equals("reweight")){
+      spc.reweight = value.toDouble
+    }
+    if(key.equals("adaptive.reweighting.sample.ratio")){
+      spc.adaptiveReweightingSampleRatio = value.toDouble
+    }
+    if(key.equals("data.per.iteration")){
+      spc.batchSize = value.toDouble
+    }
+    spc
+  }
 }
