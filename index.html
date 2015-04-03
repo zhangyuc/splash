@@ -1,37 +1,30 @@
 <!DOCTYPE html>
-<html>
+<html lang="en-us">
   <head>
-    <meta charset='utf-8'>
-    <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-    <link href='https://fonts.googleapis.com/css?family=Architects+Daughter' rel='stylesheet' type='text/css'>
-    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
-    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen">
-    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print">
-
-    <!--[if lt IE 9]>
-    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]-->
-
+    <meta charset="UTF-8">
     <title>SPLASH! by zhangyuc</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
   </head>
-
   <body>
-    <header>
-      <div class="inner">
-        <h1>SPLASH!</h1>
-        <h2>Parallel Stochastic Learning on Spark</h2>
-        <a href="https://github.com/zhangyuc/splash" class="button"><small>View project on</small> GitHub</a>
-      </div>
-    </header>
+    <section class="page-header">
+      <h1 class="project-name">SPLASH!</h1>
+      <h2 class="project-tagline">Parallel Stochastic Learning on Spark</h2>
+      <a href="https://github.com/zhangyuc/splash" class="btn">View on GitHub</a>
+      <a href="https://github.com/zhangyuc/splash/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/zhangyuc/splash/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
 
-    <div id="content-wrapper">
-      <div class="inner clearfix">
-        <section id="main-content">
-          <h1>
+    <section class="main-content">
+      <h1>
 <a id="introduction" class="anchor" href="#introduction" aria-hidden="true"><span class="octicon octicon-link"></span></a>Introduction</h1>
 
-<p>SPLASH is a general-purpose tool for immigrating stochastic algorithms to multi-node distributed systems. It provides a user-friendly interface for stochastic algorithm development. The main features of SPLASH are:</p>
+<p>SPLASH is a general-purpose tool for immigrating stochastic algorithms to multi-node distributed systems. It provides a user-friendly interface for stochastic algorithm development. Stochastic algorithm are those algorithms that perform iterative update by processing single data entries. In each iteration, the algorithm randomly samples one entry from the dataset, process it, and update an arbitrary set of shared variables. Typical examples of stochastic algorithm include <strong>stochastic gradient descent</strong>, <strong>Gibbs sampling</strong> and <strong>stochastic variational inference</strong>.</p>
+
+<p>SPLASH allows users to develop stochastic algorithm in a standard single-machine setting, then it automatically parallelizes the algorithm to execute it on distributed systems. The main features of SPLASH are:</p>
 
 <ul>
 <li><p><strong>Ease of Use</strong>: To parallelize a stochastic learning algorithm, there is no need to devise a problem-specific distributed implementation. Most stochastic algorithms can be immigrated to SPLASH for parallel execution without modification. The user doesn't need to change the algorithm's tuning parameters.</p></li>
@@ -45,32 +38,141 @@
 <p>To install SPLASH, you need to:</p>
 
 <ol>
-<li>Download and install <a href="https://spark.apache.org/streaming/">Apache Spark</a>.</li>
-<li>Download the SPLASH jar file and put it in your project classpath.</li>
-<li>Make SPLASH as a dependency when submitting Spark jobs.</li>
+<li>Download and install <a href="http://www.scala-lang.org/index.html">scala</a>, <a href="http://www.scala-sbt.org/index.html">sbt</a> and <a href="https://spark.apache.org/streaming/">Apache Spark</a>.</li>
+<li>Download the <a href="https://github.com/zhangyuc/splash/blob/gh-pages/target/scala-2.10/splash_2.10-0.0.1.jar?raw=true">SPLASH jar file</a> and put it in your project classpath.</li>
+<li>Make SPLASH as a dependency when <a href="http://spark.apache.org/docs/1.2.1/submitting-applications.html">submitting Spark jobs</a>.</li>
 </ol>
 
 <h1>
 <a id="quick-start" class="anchor" href="#quick-start" aria-hidden="true"><span class="octicon octicon-link"></span></a>Quick Start</h1>
-        </section>
 
-        <aside id="sidebar">
-          <a href="https://github.com/zhangyuc/splash/zipball/master" class="button">
-            <small>Download</small>
-            .zip file
-          </a>
-          <a href="https://github.com/zhangyuc/splash/tarball/master" class="button">
-            <small>Download</small>
-            .tar.gz file
-          </a>
+<h2>
+<a id="import-splash" class="anchor" href="#import-splash" aria-hidden="true"><span class="octicon octicon-link"></span></a>Import SPLASH</h2>
 
-          <p class="repo-owner"><a href="https://github.com/zhangyuc/splash"></a> is maintained by <a href="https://github.com/zhangyuc">zhangyuc</a>.</p>
+<p>When SPLASH is in your project classpath, you can write a self-contained application using the SPLASH API. Besides importing Spark packages, you also need to import the SPLASH package in scala, by typing:</p>
 
-          <p>This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the Architect theme by <a href="https://twitter.com/jasonlong">Jason Long</a>.</p>
-        </aside>
-      </div>
-    </div>
+<div class="highlight highlight-scala"><pre><span class="pl-k">import</span> <span class="pl-v">splash.</span><span class="pl-v">ParametrizedRDD</span>
+<span class="pl-k">import</span> <span class="pl-v">splash.</span><span class="pl-v">StreamProcessContext</span>
+<span class="pl-k">import</span> <span class="pl-v">splash.</span><span class="pl-v">ParameterSet</span></pre></div>
+
+<h2>
+<a id="create-dataset" class="anchor" href="#create-dataset" aria-hidden="true"><span class="octicon octicon-link"></span></a>Create Dataset</h2>
+
+<p>Just as every Spark applications, the first step is to create a dataset for the learning algorithm. SPLASH provides an abstraction called <strong>parametrized RDD</strong>. The parametrized RDD is very similar to the resilient distributed dataset (RDD) of Spark, but it has particular data structure for maintaining the parameters to be learnt. A parametrized RDD can be created by a standard RDD:</p>
+
+<div class="highlight highlight-scala"><pre><span class="pl-k">val</span> <span class="pl-en">paramRdd</span> <span class="pl-k">=</span> <span class="pl-k">new</span> <span class="pl-en">ParametrizedRDD</span>(data)</pre></div>
+
+<p>where <code>data</code> is a standard RDD object containing your dataset. </p>
+
+<h2>
+<a id="define-stream-processing-function" class="anchor" href="#define-stream-processing-function" aria-hidden="true"><span class="octicon octicon-link"></span></a>Define Stream Processing Function</h2>
+
+<p>To execute the learning algorithm on the dataset, set a stream processing function <code>update</code> to the parametrized RDD by</p>
+
+<div class="highlight highlight-scala"><pre>paramRdd.setProcessFunction(update)</pre></div>
+
+<p>The <code>update</code> function is implemented by the user. It takes four objects as input: a random seed, a weighted data entry in the dataset, the set of shared variables used by the stochastic algorithm and the set of local variables associated with the data entry. An exemplary implementation of the <strong>logistic regression</strong> update is:</p>
+
+<div class="highlight highlight-scala"><pre><span class="pl-k">val</span> <span class="pl-en">update</span> <span class="pl-k">=</span> ( <span class="pl-v">seed</span>: <span class="pl-en">Random</span>, <span class="pl-v">entry</span>: (<span class="pl-k">Int</span>, <span class="pl-en">Array</span>[<span class="pl-k">String</span>], <span class="pl-en">Array</span>[<span class="pl-k">Double</span>]), <span class="pl-v">weight</span>: <span class="pl-k">Double</span>, <span class="pl-v">sharedVar</span> : <span class="pl-en">ParameterSet</span>,  <span class="pl-v">localVar</span>: <span class="pl-en">ParameterSet</span> ) <span class="pl-k">=&gt;</span> {
+  <span class="pl-k">val</span> <span class="pl-en">y</span> <span class="pl-k">=</span> entry._1
+  <span class="pl-k">val</span> <span class="pl-en">x_key</span> <span class="pl-k">=</span> entry._2
+  <span class="pl-k">val</span> <span class="pl-en">x_value</span> <span class="pl-k">=</span> entry._3
+  <span class="pl-k">val</span> <span class="pl-en">learningRate</span> <span class="pl-k">=</span> <span class="pl-c1">20.0</span>
+
+  <span class="pl-c">// get the shared variable value by key "t"</span>
+  <span class="pl-k">val</span> <span class="pl-en">t</span> <span class="pl-k">=</span> sharedVar.get(<span class="pl-s"><span class="pl-pds">"</span>t<span class="pl-pds">"</span></span>)
+  <span class="pl-k">var</span> <span class="pl-en">sum</span> <span class="pl-k">=</span> <span class="pl-c1">0.0</span>
+  <span class="pl-k">for</span>(i <span class="pl-k">&lt;</span><span class="pl-k">-</span> <span class="pl-c1">0</span> until x_key.length){
+    <span class="pl-c">// get the shared variable value by key "w:"+x_key(i)</span>
+    sum <span class="pl-k">+</span><span class="pl-k">=</span> sharedVar.get(<span class="pl-s"><span class="pl-pds">"</span>w:<span class="pl-pds">"</span></span><span class="pl-k">+</span>x_key(i)) <span class="pl-k">*</span> x_value(i)
+  }
+
+  <span class="pl-k">for</span>(i <span class="pl-k">&lt;</span><span class="pl-k">-</span> <span class="pl-c1">0</span> until x_key.length)
+  {
+    <span class="pl-k">val</span> <span class="pl-en">delta</span> <span class="pl-k">=</span> weight <span class="pl-k">*</span> learningRate <span class="pl-k">/</span> math.sqrt( t <span class="pl-k">+</span> <span class="pl-c1">1</span> ) <span class="pl-k">*</span> y  <span class="pl-k">/</span> (<span class="pl-c1">1.0</span> <span class="pl-k">+</span> math.exp(y<span class="pl-k">*</span>sum)) <span class="pl-k">*</span> x_value(i)
+
+    <span class="pl-c">// increase the shared variable by delta</span>
+    sharedVar.update(<span class="pl-s"><span class="pl-pds">"</span>w:<span class="pl-pds">"</span></span> <span class="pl-k">+</span> x_key(i), delta)
+  }
+  <span class="pl-c">// increase the shared variable by weight</span>
+  sharedVar.update(<span class="pl-s"><span class="pl-pds">"</span>t<span class="pl-pds">"</span></span>, weight)
+}</pre></div>
+
+<p>in the above code <code>seed</code> is the random seed provided by the system. The data entry <code>entry</code> has three components: a binary label equal to -1 or 1, an array of feature indices and an array of feature values. The line of code</p>
+
+<div class="highlight highlight-scala"><pre>sum <span class="pl-k">+</span><span class="pl-k">=</span> sharedVar.get(<span class="pl-s"><span class="pl-pds">"</span>w:<span class="pl-pds">"</span></span><span class="pl-k">+</span>x_key(i)) <span class="pl-k">*</span> x_value(i)</pre></div>
+
+<p>accesses the weight associated with the feature index <code>x_key(i)</code> in order to compute a linear combination of feature values. Then the gradient of logistic loss with respect to this data entry is computed, and stochastic gradient descent is applied to update the feature weights:</p>
+
+<div class="highlight highlight-scala"><pre><span class="pl-k">val</span> <span class="pl-en">delta</span> <span class="pl-k">=</span> weight <span class="pl-k">*</span> learningRate <span class="pl-k">/</span> math.sqrt( t <span class="pl-k">+</span> <span class="pl-c1">1</span> ) <span class="pl-k">*</span> y  <span class="pl-k">/</span> (<span class="pl-c1">1.0</span> <span class="pl-k">+</span> math.exp(y<span class="pl-k">*</span>sum)) <span class="pl-k">*</span> x_value(i)
+sharedVar.update(<span class="pl-s"><span class="pl-pds">"</span>w:<span class="pl-pds">"</span></span> <span class="pl-k">+</span> x_key(i), delta)</pre></div>
+
+<p>There is another shared variable <code>t</code> counting the number of entries that have been processed. It controls the stepsize of stochastic gradient descent. Similarly, it is manipulated by calling the <code>get</code> and <code>update</code> function on the shared variable set.</p>
+
+<p>More generally, the value of local/shared variables are accessed by the <code>get</code> function by typing</p>
+
+<div class="highlight highlight-scala"><pre><span class="pl-k">val</span> <span class="pl-en">v1</span> <span class="pl-k">=</span> localVar.get(key)
+<span class="pl-k">val</span> <span class="pl-en">v2</span> <span class="pl-k">=</span> sharedVar.get(key)</pre></div>
+
+<p>Local variables are updated by directly putting a new value to the key:</p>
+
+<div class="highlight highlight-scala"><pre>localVar.set(key,value)</pre></div>
+
+<p>while shared variables are updated by putting the incremental change:</p>
+
+<div class="highlight highlight-scala"><pre>sharedVar.update(key,delta)</pre></div>
+
+<p>where <code>delta</code> is the difference between the new value and the old value. See the SPLASH document for more update options.</p>
+
+<h2>
+<a id="stream-processing" class="anchor" href="#stream-processing" aria-hidden="true"><span class="octicon octicon-link"></span></a>Stream Processing</h2>
+
+<p>After setting up the stream processing function, the user calls <code>streamProcess</code> to process the dataset using the stream processing function:</p>
+
+<div class="highlight highlight-scala"><pre><span class="pl-k">val</span> <span class="pl-en">spc</span> <span class="pl-k">=</span> (<span class="pl-k">new</span> <span class="pl-en">StreamProcessContext).set</span>(<span class="pl-s"><span class="pl-pds">"</span>num.of.thread<span class="pl-pds">"</span></span>, paramRdd.numOfPartition)
+paramRdd.streamProcess(spc)</pre></div>
+
+<p>The stream process context <code>spc</code> provides interfaces to control the learning process. The user can specify the number of parallel threads, the proportion of data to process per iteration, the strategy for combining parallel updates, etc. See the SPLASH document for more details. In this example, we adopt the system's default setting, but choosing the number of parallel threads to be equal to the number of RDD partitions. In the default setting, every entry in the dataset is processed once by one call of <code>streamProcess</code>. In many machine learning applications, the user is recommended to call <code>streamProcess</code> multiple times to take multiple passes over the dataset, in order to obtain higher learning accuracy.</p>
+
+<h2>
+<a id="output-and-evaluation" class="anchor" href="#output-and-evaluation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Output and Evaluation</h2>
+
+<p>After processing the data, the shared variable set can be accessed by:</p>
+
+<div class="highlight highlight-scala"><pre><span class="pl-k">val</span> <span class="pl-en">sharedVar</span> <span class="pl-k">=</span> paramRdd.getFirstSharedVariable()</pre></div>
+
+<p>which returns the shared variable set maintained by the first RDD partition. The user can also query the shared variable set from all RDD partitions by call <code>paramRdd.getAllSharedVariable()</code>. It is also possible to manipulate the parametrized RDD directly. For example, by calling</p>
+
+<div class="highlight highlight-scala"><pre><span class="pl-k">val</span> <span class="pl-en">loss</span> <span class="pl-k">=</span> paramRdd.map(evaluateLoss).reduce( _ <span class="pl-k">+</span> _ )</pre></div>
+
+<p>every entry in the dataset is processed by the <code>evaluateLoss</code> function. The resulting losses are aggregated by the <code>reduce</code> operator. The <code>map</code> operator for parametrized RDD is different from the standard <code>map</code> in that it is granted access to not only a data entry, but also the associated local and shared variables. As a concrete example, we define a function for evaluating the logistic loss:</p>
+
+<div class="highlight highlight-scala"><pre><span class="pl-k">val</span> <span class="pl-en">evaluateLoss</span> <span class="pl-k">=</span> (<span class="pl-v">entry</span>: (<span class="pl-k">Int</span>, <span class="pl-en">Array</span>[<span class="pl-k">String</span>], <span class="pl-en">Array</span>[<span class="pl-k">Double</span>]), <span class="pl-v">sharedVar</span> : <span class="pl-en">ParameterSet</span>,  <span class="pl-v">localVar</span>: <span class="pl-en">ParameterSet</span> ) <span class="pl-k">=&gt;</span> {
+  <span class="pl-k">val</span> <span class="pl-en">y</span> <span class="pl-k">=</span> entry._1
+  <span class="pl-k">val</span> <span class="pl-en">x_key</span> <span class="pl-k">=</span> entry._2
+  <span class="pl-k">val</span> <span class="pl-en">x_value</span> <span class="pl-k">=</span> entry._3
+
+  <span class="pl-k">var</span> <span class="pl-en">sum</span> <span class="pl-k">=</span> <span class="pl-c1">0.0</span>
+  <span class="pl-k">for</span>(i <span class="pl-k">&lt;</span><span class="pl-k">-</span> <span class="pl-c1">0</span> until x_key.length){
+    sum <span class="pl-k">+</span><span class="pl-k">=</span> sharedVar.get(<span class="pl-s"><span class="pl-pds">"</span>w:<span class="pl-pds">"</span></span> <span class="pl-k">+</span> x_key(i)) <span class="pl-k">*</span> x_value(i)
+  }
+  math.log( <span class="pl-c1">1.0</span> <span class="pl-k">+</span> math.exp( <span class="pl-k">-</span> y <span class="pl-k">*</span> sum ) )
+}</pre></div>
+
+<p>It provides a convenient way to evaluate the performance of the algorithm. See SPLASH document for more options of manipulating the parametrized RDD.</p>
+
+<h2>
+<a id="diy-with-the-logistic-regression-example" class="anchor" href="#diy-with-the-logistic-regression-example" aria-hidden="true"><span class="octicon octicon-link"></span></a>DIY with The Logistic Regression Example</h2>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/zhangyuc/splash">SPLASH!</a> is maintained by <a href="https://github.com/zhangyuc">zhangyuc</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
 
   
   </body>
 </html>
+
