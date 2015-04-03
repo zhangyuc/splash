@@ -36,11 +36,22 @@
 <ul>
 <li><p><strong>Ease of Use</strong>: To parallelize a stochastic learning algorithm, there is no need to devise a problem-specific distributed implementation. Most stochastic algorithms can be immigrated to SPLASH for parallel execution without modification. The user doesn't need to change the algorithm's tuning parameters.</p></li>
 <li><p><strong>Fast Performance</strong>: SPLASH workers won't synchronize until processing a large bulk of data. Thus, communication cost won't be a bottleneck on the algorithm's efficiency. It makes SPLASH substantially faster than other distributed schemes which require frequent synchronization.</p></li>
-<li><p><strong>Integration with Spark</strong>: SPLASH is built on <a href="https://spark.apache.org/streaming/">Apache Spark</a>. it takes the resilient distributed dataset (RDD) of Spark as input and generates RDD as output. In addition, it is seamlessly integrated with other data processing tools in the Spark environment, including the <a href="https://spark.apache.org/mllib/">MLlib machine learning library</a>. </p></li>
+<li><p><strong>Integration with Apache Spark</strong>: SPLASH is built on <a href="https://spark.apache.org/streaming/">Apache Spark</a>. it takes the resilient distributed dataset (RDD) of Spark as input and generates RDD as output. In addition, it is seamlessly integrated with other data processing tools in the Spark environment, including the <a href="https://spark.apache.org/mllib/">MLlib machine learning library</a>. </p></li>
 </ul>
 
 <h1>
 <a id="install-splash" class="anchor" href="#install-splash" aria-hidden="true"><span class="octicon octicon-link"></span></a>Install SPLASH</h1>
+
+<p>To install SPLASH, you need to:</p>
+
+<ol>
+<li>Download and install <a href="https://spark.apache.org/streaming/">Apache Spark</a>.</li>
+<li>Download the SPLASH jar file and put it in your project classpath.</li>
+<li>Make SPLASH as a dependency when submitting Spark jobs.</li>
+</ol>
+
+<h1>
+<a id="quick-start" class="anchor" href="#quick-start" aria-hidden="true"><span class="octicon octicon-link"></span></a>Quick Start</h1>
         </section>
 
         <aside id="sidebar">
