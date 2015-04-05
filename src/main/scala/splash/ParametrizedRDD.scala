@@ -37,6 +37,10 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     worksets = generateWorkSets(initRdd)
   }
   
+  def getTotalTimeEllapsed = totalTimeEllapsed
+  def getSelectedSampleWeight = proposedWeight
+  def partitions = worksets.partitions
+  
   def setProcessFunction(func :(Random, T, Double, ParameterSet, ParameterSet) => Any){
     process_func = func
   }
@@ -48,10 +52,6 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
   def setPostprocessFunction(func: (ParameterSet) => Any){
     postprocess_func = func
   }
-  
-  def getTotalTimeEllapsed = totalTimeEllapsed
-  def getSelectedSampleWeight = proposedWeight
-  def numOfPartition = numOfWorkset
   
   def map[U: ClassTag](func : (T, ParameterSet, ParameterSet) => U) = {
     val list = new ListBuffer[U]

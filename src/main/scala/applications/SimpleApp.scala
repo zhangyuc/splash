@@ -12,7 +12,7 @@ object SimpleApp {
     val root_path = prop.getProperty("root_path")
     val model = prop.getProperty("model")
     if(model.equals("SGD")){ 
-      (new SGD).train(root_path + "rcv1_test.txt")
+      (new SGD).train(root_path + "covtype.txt")
     }
     if(model.equals("GD")){
       (new GD).train(root_path + "covtype.txt")

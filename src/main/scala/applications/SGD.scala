@@ -58,11 +58,8 @@ class SGD {
     val paraRdd = new ParametrizedRDD[(Int, Array[String], Array[Double])]( data )
     paraRdd.foreachSharedVariable(preprocess)
     paraRdd.process_func = this.update
-    // paraRdd.evaluate_func = this.evaluateTestLoss
+    paraRdd.evaluate_func = this.evaluateTestLoss
     
-    paraRdd.streamProcess(spc.set("num.of.thread", "1").set("reweight", "1"))
-    val loss = paraRdd.map(evaluateTestLoss).reduce( (a,b) => a+b ) / n
-    println("%5.3f\t%5.8f\t%f".format(paraRdd.totalTimeEllapsed, loss, paraRdd.proposedWeight))
     for( i <- 0 until num_of_pass ){
       paraRdd.foreachSharedVariable(preIterationProcess)
       paraRdd.streamProcess(spc)
@@ -122,7 +119,7 @@ class SGD {
     // stepsize 100 for rcv1 and mnist38, 20 for covtype
     for(i <- 0 until x_key.length)
     {
-      val delta = 100.0 * weight / math.sqrt( t + 1 ) * y / (1.0 + math.exp(y*y_predict)) * x_value(i)
+      val delta = 20.0 * weight / math.sqrt( t + 1 ) * y / (1.0 + math.exp(y*y_predict)) * x_value(i)
       sharedVar.update("w:"+x_key(i), delta, UpdateType.Push )
       sharedVar.update("ws:"+x_key(i), delta * (total_c - c) / total_c, UpdateType.Push )
     }
