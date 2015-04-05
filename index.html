@@ -12,20 +12,20 @@
   <body>
     <section class="page-header">
       <h1 class="project-name">SPLASH!</h1>
-      <h2 class="project-tagline">General API for Parallel Stochastic Learning</h2>
+      <h2 class="project-tagline">Parallel Stochastic Learning on Spark</h2>
     </section>
 
     <section class="main-content">
       <h1>
 <a id="introduction" class="anchor" href="#introduction" aria-hidden="true"><span class="octicon octicon-link"></span></a>Introduction</h1>
 
-<p>SPLASH is a general-purpose tool for immigrating stochastic algorithms to multi-node distributed systems. It provides a user-friendly interface for stochastic algorithm development. Stochastic algorithm are those algorithms that perform iterative update by processing single data entries. In each iteration, the algorithm randomly samples one entry from the dataset, process it, and update an arbitrary set of shared variables. Typical examples of stochastic algorithm include <strong>stochastic gradient descent</strong>, <strong>Gibbs sampling</strong> and <strong>stochastic variational inference</strong>.</p>
+<p><strong>Stochastic algorithm</strong> is a family of algorithms that perform iterative update by processing single data points. In each iteration, the algorithm randomly samples one element from the dataset, process it, and update an arbitrary set of shared variables. Typical examples of stochastic algorithm include <strong>stochastic gradient descent</strong>, <strong>Gibbs sampling</strong> and <strong>stochastic variational inference</strong>.</p>
 
-<p>SPLASH allows users to develop stochastic algorithm in a standard single-machine setting, then it automatically parallelizes the algorithm to execute it on distributed systems. The main features of SPLASH are:</p>
+<p>SPLASH is a general-purpose tool for immigrating stochastic algorithms to multi-node distributed systems. It provides a user-friendly interface for stochastic algorithm development. The main features of SPLASH are:</p>
 
 <ul>
-<li><p><strong>Ease of Use</strong>: To parallelize a stochastic learning algorithm, there is no need to devise a problem-specific distributed implementation. Most stochastic algorithms can be immigrated to SPLASH for parallel execution without modification. The user doesn't need to change the algorithm's tuning parameters.</p></li>
-<li><p><strong>Fast Performance</strong>: SPLASH workers won't synchronize until processing a large bulk of data. Thus, communication cost won't be a bottleneck on the algorithm's efficiency. It makes SPLASH substantially faster than other distributed schemes which require frequent synchronization.</p></li>
+<li><p><strong>Ease of Use</strong>: Most stochastic algorithms can be immigrated to SPLASH for parallel execution without modification. The user writes code as if the program will be executed by a single-core processor. There is no need to devise a distributed implementation -- the distributed implementation is automatically taken care of by the system. </p></li>
+<li><p><strong>Fast Performance</strong>: SPLASH workers won't synchronize until processing a large bulk of data. Thus, communication is not a bottleneck on the algorithm's efficiency. It makes SPLASH substantially faster than other parallel schemes which require frequent communication. SPLASH adopts novel strategies to resolve parallel processing conflicts, so that these conflicts don't hurt the algorithm's performance.</p></li>
 <li><p><strong>Integration with Apache Spark</strong>: SPLASH is built on <a href="https://spark.apache.org/streaming/">Apache Spark</a>. it takes the resilient distributed dataset (RDD) of Spark as input and generates RDD as output. In addition, it is seamlessly integrated with other data processing tools in the Spark environment, including the <a href="https://spark.apache.org/mllib/">MLlib machine learning library</a>. </p></li>
 </ul>
 
@@ -68,12 +68,12 @@
 
 <div class="highlight highlight-scala"><pre>paramRdd.setProcessFunction(update)</pre></div>
 
-<p>The <code>update</code> function is implemented by the user. It takes four objects as input: a random seed, a weighted data entry in the dataset, the set of shared variables used by the stochastic algorithm and the set of local variables associated with the data entry. An exemplary implementation of the <strong>logistic regression</strong> update is:</p>
+<p>The <code>update</code> function is implemented by the user. It takes four objects as input: a random seed, a weighted data element in the dataset, the set of shared variables used by the stochastic algorithm and the set of local variables associated with the data element. An exemplary implementation of the <strong>logistic regression</strong> update is:</p>
 
-<div class="highlight highlight-scala"><pre><span class="pl-k">val</span> <span class="pl-en">update</span> <span class="pl-k">=</span> ( <span class="pl-v">seed</span>: <span class="pl-en">Random</span>, <span class="pl-v">entry</span>: (<span class="pl-k">Int</span>, <span class="pl-en">Array</span>[<span class="pl-k">String</span>], <span class="pl-en">Array</span>[<span class="pl-k">Double</span>]), <span class="pl-v">weight</span>: <span class="pl-k">Double</span>, <span class="pl-v">sharedVar</span> : <span class="pl-en">ParameterSet</span>,  <span class="pl-v">localVar</span>: <span class="pl-en">ParameterSet</span> ) <span class="pl-k">=&gt;</span> {
-  <span class="pl-k">val</span> <span class="pl-en">y</span> <span class="pl-k">=</span> entry._1
-  <span class="pl-k">val</span> <span class="pl-en">x_key</span> <span class="pl-k">=</span> entry._2
-  <span class="pl-k">val</span> <span class="pl-en">x_value</span> <span class="pl-k">=</span> entry._3
+<div class="highlight highlight-scala"><pre><span class="pl-k">val</span> <span class="pl-en">update</span> <span class="pl-k">=</span> (<span class="pl-v">seed</span>: <span class="pl-en">Random</span>, <span class="pl-v">element</span>: (<span class="pl-k">Int</span>, <span class="pl-en">Array</span>[<span class="pl-k">String</span>], <span class="pl-en">Array</span>[<span class="pl-k">Double</span>]), <span class="pl-v">weight</span>: <span class="pl-k">Double</span>, <span class="pl-v">sharedVar</span>: <span class="pl-en">ParameterSet</span>, <span class="pl-v">localVar</span>: <span class="pl-en">ParameterSet</span> ) <span class="pl-k">=&gt;</span> {
+  <span class="pl-k">val</span> <span class="pl-en">y</span> <span class="pl-k">=</span> element._1
+  <span class="pl-k">val</span> <span class="pl-en">x_key</span> <span class="pl-k">=</span> element._2
+  <span class="pl-k">val</span> <span class="pl-en">x_value</span> <span class="pl-k">=</span> element._3
   <span class="pl-k">val</span> <span class="pl-en">learningRate</span> <span class="pl-k">=</span> <span class="pl-c1">20.0</span>
 
   <span class="pl-c">// get the shared variable value by key "t"</span>
@@ -95,16 +95,16 @@
   sharedVar.update(<span class="pl-s"><span class="pl-pds">"</span>t<span class="pl-pds">"</span></span>, weight)
 }</pre></div>
 
-<p>in the above code <code>seed</code> is the random seed provided by the system. The data entry <code>entry</code> has three components: a binary label equal to -1 or 1, an array of feature indices and an array of feature values. The line of code</p>
+<p>in the above code <code>seed</code> is the random seed provided by the system. The data element <code>element</code> has three components: a binary label equal to -1 or 1, an array of feature indices and an array of feature values. The line of code</p>
 
 <div class="highlight highlight-scala"><pre>sum <span class="pl-k">+</span><span class="pl-k">=</span> sharedVar.get(<span class="pl-s"><span class="pl-pds">"</span>w:<span class="pl-pds">"</span></span><span class="pl-k">+</span>x_key(i)) <span class="pl-k">*</span> x_value(i)</pre></div>
 
-<p>accesses the weight associated with the feature index <code>x_key(i)</code> in order to compute a linear combination of feature values. Then the gradient of logistic loss with respect to this data entry is computed, and stochastic gradient descent is applied to update the feature weights:</p>
+<p>accesses the weight associated with the feature index <code>x_key(i)</code> in order to compute a linear combination of feature values. Then the gradient of logistic loss with respect to this data element is computed, and stochastic gradient descent is applied to update the feature weights:</p>
 
 <div class="highlight highlight-scala"><pre><span class="pl-k">val</span> <span class="pl-en">delta</span> <span class="pl-k">=</span> weight <span class="pl-k">*</span> learningRate <span class="pl-k">/</span> math.sqrt( t <span class="pl-k">+</span> <span class="pl-c1">1</span> ) <span class="pl-k">*</span> y  <span class="pl-k">/</span> (<span class="pl-c1">1.0</span> <span class="pl-k">+</span> math.exp(y<span class="pl-k">*</span>sum)) <span class="pl-k">*</span> x_value(i)
 sharedVar.update(<span class="pl-s"><span class="pl-pds">"</span>w:<span class="pl-pds">"</span></span> <span class="pl-k">+</span> x_key(i), delta)</pre></div>
 
-<p>There is another shared variable <code>t</code> counting the number of entries that have been processed. It controls the stepsize of stochastic gradient descent. Similarly, it is manipulated by calling the <code>get</code> and <code>update</code> function on the shared variable set.</p>
+<p>There is another shared variable <code>t</code> counting the number of elements that have been processed. It controls the stepsize of stochastic gradient descent. Similarly, it is manipulated by calling the <code>get</code> and <code>update</code> function on the shared variable set.</p>
 
 <p>More generally, the value of local/shared variables are accessed by the <code>get</code> function by typing</p>
 
@@ -119,17 +119,17 @@ sharedVar.update(<span class="pl-s"><span class="pl-pds">"</span>w:<span class="
 
 <div class="highlight highlight-scala"><pre>sharedVar.update(key,delta)</pre></div>
 
-<p>where <code>delta</code> is the difference between the new value and the old value. See the SPLASH document for more update options.</p>
+<p>where <code>delta</code> is the difference between the new value and the old value. See the SPLASH API for more update options.</p>
 
 <h2>
 <a id="stream-processing" class="anchor" href="#stream-processing" aria-hidden="true"><span class="octicon octicon-link"></span></a>Stream Processing</h2>
 
 <p>After setting up the stream processing function, the user calls <code>streamProcess</code> to process the dataset using the stream processing function:</p>
 
-<div class="highlight highlight-scala"><pre><span class="pl-k">val</span> <span class="pl-en">spc</span> <span class="pl-k">=</span> (<span class="pl-k">new</span> <span class="pl-en">StreamProcessContext).set</span>(<span class="pl-s"><span class="pl-pds">"</span>num.of.thread<span class="pl-pds">"</span></span>, paramRdd.numOfPartition)
+<div class="highlight highlight-scala"><pre><span class="pl-k">val</span> <span class="pl-en">spc</span> <span class="pl-k">=</span> (<span class="pl-k">new</span> <span class="pl-en">StreamProcessContext).set</span>(<span class="pl-s"><span class="pl-pds">"</span>num.of.thread<span class="pl-pds">"</span></span>, paramRdd.partitions.length)
 paramRdd.streamProcess(spc)</pre></div>
 
-<p>The stream process context <code>spc</code> provides interfaces to control the learning process. The user can specify the number of parallel threads, the proportion of data to process per iteration, the strategy for combining parallel updates, etc. See the SPLASH document for more details. In this example, we adopt the system's default setting, but choosing the number of parallel threads to be equal to the number of RDD partitions. In the default setting, every entry in the dataset is processed once by one call of <code>streamProcess</code>. In many machine learning applications, the user is recommended to call <code>streamProcess</code> multiple times to take multiple passes over the dataset, in order to obtain higher learning accuracy.</p>
+<p>The stream process context <code>spc</code> provides interfaces to control the learning process. The user can specify the number of parallel threads, the proportion of data to process per iteration, the strategy for combining parallel updates, etc. See the SPLASH API for more details. In this example, we adopt the system's default setting, but choosing the number of parallel threads to be equal to the number of RDD partitions. In the default setting, every element in the dataset is processed once by one call of <code>streamProcess</code>. In many machine learning applications, the user is recommended to call <code>streamProcess</code> multiple times to take multiple passes over the dataset, in order to obtain higher learning accuracy.</p>
 
 <h2>
 <a id="output-and-evaluation" class="anchor" href="#output-and-evaluation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Output and Evaluation</h2>
@@ -142,12 +142,12 @@ paramRdd.streamProcess(spc)</pre></div>
 
 <div class="highlight highlight-scala"><pre><span class="pl-k">val</span> <span class="pl-en">loss</span> <span class="pl-k">=</span> paramRdd.map(evaluateLoss).reduce( _ <span class="pl-k">+</span> _ )</pre></div>
 
-<p>every entry in the dataset is processed by the <code>evaluateLoss</code> function. The resulting losses are aggregated by the <code>reduce</code> operator. The <code>map</code> operator for parametrized RDD is different from the standard <code>map</code> in that it is granted access to not only a data entry, but also the associated local and shared variables. As a concrete example, we define a function for evaluating the logistic loss:</p>
+<p>every element in the dataset is processed by the <code>evaluateLoss</code> function. The resulting losses are aggregated by the <code>reduce</code> operator. The <code>map</code> operator for parametrized RDD is different from the standard <code>map</code> in that it is granted access to not only a data element, but also the associated local and shared variables. As a concrete example, we define a function for evaluating the logistic loss:</p>
 
-<div class="highlight highlight-scala"><pre><span class="pl-k">val</span> <span class="pl-en">evaluateLoss</span> <span class="pl-k">=</span> (<span class="pl-v">entry</span>: (<span class="pl-k">Int</span>, <span class="pl-en">Array</span>[<span class="pl-k">String</span>], <span class="pl-en">Array</span>[<span class="pl-k">Double</span>]), <span class="pl-v">sharedVar</span> : <span class="pl-en">ParameterSet</span>,  <span class="pl-v">localVar</span>: <span class="pl-en">ParameterSet</span> ) <span class="pl-k">=&gt;</span> {
-  <span class="pl-k">val</span> <span class="pl-en">y</span> <span class="pl-k">=</span> entry._1
-  <span class="pl-k">val</span> <span class="pl-en">x_key</span> <span class="pl-k">=</span> entry._2
-  <span class="pl-k">val</span> <span class="pl-en">x_value</span> <span class="pl-k">=</span> entry._3
+<div class="highlight highlight-scala"><pre><span class="pl-k">val</span> <span class="pl-en">evaluateLoss</span> <span class="pl-k">=</span> (<span class="pl-v">element</span>: (<span class="pl-k">Int</span>, <span class="pl-en">Array</span>[<span class="pl-k">String</span>], <span class="pl-en">Array</span>[<span class="pl-k">Double</span>]), <span class="pl-v">sharedVar</span> : <span class="pl-en">ParameterSet</span>,  <span class="pl-v">localVar</span>: <span class="pl-en">ParameterSet</span> ) <span class="pl-k">=&gt;</span> {
+  <span class="pl-k">val</span> <span class="pl-en">y</span> <span class="pl-k">=</span> element._1
+  <span class="pl-k">val</span> <span class="pl-en">x_key</span> <span class="pl-k">=</span> element._2
+  <span class="pl-k">val</span> <span class="pl-en">x_value</span> <span class="pl-k">=</span> element._3
 
   <span class="pl-k">var</span> <span class="pl-en">sum</span> <span class="pl-k">=</span> <span class="pl-c1">0.0</span>
   <span class="pl-k">for</span>(i <span class="pl-k">&lt;</span><span class="pl-k">-</span> <span class="pl-c1">0</span> until x_key.length){
@@ -156,10 +156,10 @@ paramRdd.streamProcess(spc)</pre></div>
   math.log( <span class="pl-c1">1.0</span> <span class="pl-k">+</span> math.exp( <span class="pl-k">-</span> y <span class="pl-k">*</span> sum ) )
 }</pre></div>
 
-<p>It provides a convenient way to evaluate the performance of the algorithm. See SPLASH document for more options of manipulating the parametrized RDD.</p>
+<p>It provides a convenient way to evaluate the performance of the algorithm. See SPLASH API for more options of manipulating the parametrized RDD.</p>
 
 <h2>
-<a id="try-logistic-regression-example-by-yourself" class="anchor" href="#try-logistic-regression-example-by-yourself" aria-hidden="true"><span class="octicon octicon-link"></span></a>Try Logistic Regression Example By Yourself</h2>
+<a id="try-logistic-regression-example-yourself" class="anchor" href="#try-logistic-regression-example-yourself" aria-hidden="true"><span class="octicon octicon-link"></span></a>Try Logistic Regression Example Yourself!</h2>
 
 <p>To run the logistic regression example (with stochastic gradient descent), download the <a href="https://github.com/zhangyuc/splash/blob/gh-pages/examples/SplashExample.tar.gz?raw=true">SPLASH example</a> and extract it at any directory. The SPLASH library is included in the package, so you don't have to download it again. To run the code, <code>cd</code> into that directory, then compile the code by typing:</p>
 
@@ -189,8 +189,146 @@ Time = 5.719; Loss = 0.51593768; Selected Sample Weight = 16.000000
 
 <p>Each line corresponds to the outcome after an additional pass over the dataset. The three quantities are the total time elapsed, the average logistic loss and the adaptive sample weight chosen by the SPLASH system.</p>
 
+<h1>
+<a id="splash-api" class="anchor" href="#splash-api" aria-hidden="true"><span class="octicon octicon-link"></span></a>SPLASH API</h1>
+
+<p>In this section, we provide a brief description on the SPLASH API. </p>
+
+<h2>
+<a id="parametrized-rdd-operations" class="anchor" href="#parametrized-rdd-operations" aria-hidden="true"><span class="octicon octicon-link"></span></a>Parametrized RDD Operations</h2>
+
+<p>The parametrized RDD provides a similar set of operations that are supported by Spark RDD. Since the parametrized RDD maintains local variables and shared variables, there are additional operations manipulating these data structures.</p>
+
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>map(<em>func</em>)</td>
+<td>Return a RDD formed by mapping each element by function <code>func</code>. The function takes the element and the associated local/shared variables as input</td>
+</tr>
+<tr>
+<td>foreach(<em>func</em>)</td>
+<td>Process each element by function <code>func</code>. The function takes the element and the associated local/shared variables as input.</td>
+</tr>
+<tr>
+<td>mapSharedVariable (<em>func</em>)</td>
+<td>Return a RDD formed by mapping the shared variable set by function <code>func</code>.</td>
+</tr>
+<tr>
+<td>foreachSharedVariable (<em>func</em>)</td>
+<td>Process the shared variable set by function <code>func</code>.</td>
+</tr>
+<tr>
+<td>syncSharedVariable()</td>
+<td>Synchronize the shared variable of all partitions. This operation often follows the execution of the four operations above.</td>
+</tr>
+<tr>
+<td>getFirstSharedVariable()</td>
+<td>Return the set of shared variables in the first partition.</td>
+</tr>
+<tr>
+<td>getAllSharedVariable()</td>
+<td>Return an array of the set of shared variables in all partitions.</td>
+</tr>
+<tr>
+<td>setProcessFunc(<em>func</em>)</td>
+<td>Set the stream processing function. The function <code>func</code> takes a random seed, a weighted element and the associated local/shared variables. It performs update on the local/shared variables.</td>
+</tr>
+<tr>
+<td>setPostProcessFunc (<em>func</em>)</td>
+<td>Set the post-processing function. The function <code>func</code> takes a shared variable set after one iteration of stream processing, and performs post-processing on the shared variables.</td>
+</tr>
+<tr>
+<td>setLossFunction(<em>func</em>)</td>
+<td>Set a loss function for the stochastic algorithm. The function <code>func</code> takes an element and the associated local/shared variables. It returns the loss incurred by this element.</td>
+</tr>
+<tr>
+<td>streamProcess(<em>spc</em>)</td>
+<td>Use the stream processing function to process the dataset. <code>spc</code> is a StreamProcessContext object. It includes configurations for the stream processing procedure.</td>
+</tr>
+</tbody>
+</table>
+
+<h2>
+<a id="parameter-set-operations" class="anchor" href="#parameter-set-operations" aria-hidden="true"><span class="octicon octicon-link"></span></a>Parameter Set Operations</h2>
+
+<p>Both the local variables and the shared variables are organized by a ParameterSet instance. There are operations for reading and writing the parameter set.</p>
+
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>get(<em>key</em>)</td>
+<td>Return the value of the key.</td>
+</tr>
+<tr>
+<td>set(<em>key</em>,<em>value</em>)</td>
+<td>Put the value for the key.</td>
+</tr>
+<tr>
+<td>update (<em>key</em>,<em>delta</em>,<em>updateType</em>)</td>
+<td>Update the value of the key by increasing it by <code>delta</code>. The <code>updateType</code> argument is optional. It has default value <code>Push</code> and alternative value <code>Keep</code>. If <code>updateType = Push</code>, then the update will eventually be pushed to all partitions. Otherwise, the updated is kept only by the current partition.</td>
+</tr>
+<tr>
+<td>updateWithUnitWeight (<em>key</em>,<em>delta</em>,<em>updateType</em>)</td>
+<td>The same functionality as <code>update</code>, but the system will assume that the current element has unit weight.</td>
+</tr>
+</tbody>
+</table>
+
+<h2>
+<a id="stream-process-context" class="anchor" href="#stream-process-context" aria-hidden="true"><span class="octicon octicon-link"></span></a>Stream Process Context</h2>
+
+<p>The Stream Process Context allows the user setting customized properties for the stream processing procedure. Given a Stream Process Context object <code>spc</code>, the properties are set by</p>
+
+<div class="highlight highlight-scala"><pre>spc <span class="pl-k">=</span> spc.set(propertyName,propertyValue)</pre></div>
+
+<p>Here is a list of configurable properties:</p>
+
+<table>
+<thead>
+<tr>
+<th>Property Name</th>
+<th align="center">Default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>num.of.thread</td>
+<td align="center">1</td>
+<td>The number of parallel threads in stream processing.</td>
+</tr>
+<tr>
+<td>data.per.iteration</td>
+<td align="center">1.0</td>
+<td>Proportion of data processed per iteration.</td>
+</tr>
+<tr>
+<td>apply.adaptive.reweighting</td>
+<td align="center">true</td>
+<td>If the value is <code>true</code>, the system will adaptively choose element weights.</td>
+</tr>
+<tr>
+<td>reweight</td>
+<td align="center">1.0</td>
+<td>If <code>apply.adaptive.reweighting = false</code>, then the element weights are chosen by <code>reweight</code>.</td>
+</tr>
+</tbody>
+</table>
+
       <footer class="site-footer">
-        <span class="site-footer-owner"><a href="https://github.com/zhangyuc/splash">SPLASH!</a> is maintained by <a href="http://www.cs.berkeley.edu/~yuczhang/">Yuchen Zhang</a>.</span>
+        <span class="site-footer-owner"><a href="https://github.com/zhangyuc/splash">SPLASH!</a> is maintained by <a href="https://github.com/zhangyuc">zhangyuc</a>.</span>
 
         <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
       </footer>
