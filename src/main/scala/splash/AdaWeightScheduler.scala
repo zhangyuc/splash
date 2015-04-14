@@ -7,7 +7,7 @@ import scala.util.Random
 import scala.reflect.ClassTag
 
 class AdaWeightScheduler {
-  var oldWeight = -1.0
+  var oldWeight = 0.0
   var dtime = 0
   var dtimeLimit = 0
   
@@ -26,37 +26,39 @@ class AdaWeightScheduler {
       val func = process_func
       val eval_func = evaluate_func
       val post_func = postprocess_func
-      val num_of_thread = spc.numOfThread
-      val adaptiveReweightingSampleRatio = spc.adaptiveReweightingSampleRatio * spc.batchSize
+      val threadNum = spc.threadNum
+      val adaptiveReweightingSampleRatio = spc.adaptiveWeightSampleRatio * spc.batchSize
       val process_rand_seed = rnd.nextInt(65536)
       val priorityArray = worksets.context.broadcast(parray)
-      val rescaleFactorSet = new ListBuffer[Double]
       
-      // construct rescale factor set
+      // construct rescaling factor set
+      val rescaleFactorSet = new ListBuffer[Double]
       var factor = 1
-      while(factor < num_of_thread){
+      while(factor < threadNum){
         rescaleFactorSet.append(factor)
         factor *= 4
       }
-      rescaleFactorSet.append(num_of_thread)
+      rescaleFactorSet.append(threadNum)
       
       // construct loss set
       val lossSet = worksets.map(workset => {
         val tentativeBatchSize = math.ceil(workset.length * adaptiveReweightingSampleRatio).toInt
         val sharedVar = workset.sharedVar
         val lossSet = new HashSet[(Double,Double)]
+        val factor = rescaleFactorSet( priorityArray.value(workset.id) % rescaleFactorSet.length )
         
-        if(priorityArray.value(workset.id) < num_of_thread){
+        if(priorityArray.value(workset.id) < threadNum){
           val rnd = new Random(process_rand_seed + workset.id)
           sharedVar.batchSize = tentativeBatchSize
-          sharedVar.rescaleFactor = rescaleFactorSet( priorityArray.value(workset.id) % rescaleFactorSet.length )
+          sharedVar.rescaleFactor = factor
           val cp_train = workset.createIteratorCheckpoint()
           
           // construct test set
           val testDataIndex = new ListBuffer[(Int,Int)]
           var testCount = 0
+          workset.restoreIteratorCheckpoint(cp_train)
           for(i <- 0 until tentativeBatchSize){
-            if(testCount < tentativeBatchSize.toDouble / num_of_thread)
+            if(testCount < tentativeBatchSize.toDouble / threadNum)
             {
               testDataIndex.append(workset.createIteratorCheckpoint())
               testCount += 1
@@ -91,9 +93,6 @@ class AdaWeightScheduler {
           
           // loss before training
           var loss = 0.0
-          if(eval_func != null){
-            loss -= evaluate() / tentativeBatchSize
-          }
           
           // training
           workset.restoreIteratorCheckpoint(cp_train)
@@ -108,7 +107,7 @@ class AdaWeightScheduler {
             func(rnd, record.line, sharedVar.rescaleFactor * workset.length / tentativeBatchSize, sharedVar, localVar)
             record.variable = localVar.toArray()
           }
-          sharedVar.rescaleDelta( num_of_thread  / sharedVar.rescaleFactor )
+          sharedVar.rescaleDelta( threadNum  / sharedVar.rescaleFactor )
           if(post_func != null){
             post_func(sharedVar)
           }
@@ -151,7 +150,7 @@ class AdaWeightScheduler {
       // mean.foreach( x => println(x._1 +  "\t" +  x._2 + "\t" + std(x._1)) )
       
       val sortedSum = mean.toList.sortWith( (a,b) => a._2 < b._2 )
-      val newWeight = math.min(num_of_thread, sortedSum(0)._1)
+      val newWeight = sortedSum(0)._1
       
       if(newWeight == oldWeight){
         dtimeLimit *= 2

@@ -126,7 +126,7 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
   
   def streamProcess (spc: StreamProcessContext){
     refresh()
-    if(iterNum == 0 && spc.warmStart && spc.numOfThread > 1 && spc.applyAdaptiveReweighting){
+    if(iterNum == 0 && spc.warmStart && spc.threadNum > 1 && spc.useAdaptiveWeight){
       takePass(globalRnd, worksets, process_func, evaluate_func, postprocess_func, spc.set("num.of.thread", "1"))
       takePass(globalRnd, worksets, process_func, evaluate_func, postprocess_func, spc)
     }
@@ -267,7 +267,7 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     
     // assign variables
     val applyAdaptiveReweighting = {
-      spc.applyAdaptiveReweighting == true && spc.numOfThread > 1
+      spc.useAdaptiveWeight == true && spc.threadNum > 1
     }
     
     val beta = 0.9
@@ -280,13 +280,13 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     {
       // prepare broadcast
       val blockIteratorBroadcast = worksetIterator
-      if(spc.numOfThread == 1){ 
+      if(spc.threadNum == 1){ 
         worksetIterator = (worksetIterator + 1) % num_of_workset 
       }
       
       val func = process_func
       val eval_func = evaluate_func
-      val num_of_thread = spc.numOfThread
+      val threadNum = spc.threadNum 
       val post_func = postprocess_func
       
       val sc = worksets.context
@@ -294,7 +294,7 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
       
       val stepsize = spc.batchSize
       val process_rand_seed = rnd.nextInt(65536)
-      val adaptiveReweightingSampleRatio = spc.adaptiveReweightingSampleRatio
+      val adaptiveReweightingSampleRatio = spc.adaptiveWeightSampleRatio
       val iterStartTime = (new Date).getTime
       
       // determine reweight
@@ -303,7 +303,7 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
           aws.getAdaWeight(rnd, worksets, process_func, evaluate_func, postprocess_func, spc, priorityArray.value)
         }
         else{
-          spc.reweight
+          spc.weight
         }
       }
       this.proposedWeight = reweight
@@ -312,8 +312,8 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
       worksets.foreach(workset => {
         val batchsize = math.ceil(stepsize * workset.length).toInt
         val threadActive = {
-          if(num_of_thread == 1) workset.id == blockIteratorBroadcast
-          else priorityArray.value(workset.id) < num_of_thread
+          if(threadNum == 1) workset.id == blockIteratorBroadcast
+          else priorityArray.value(workset.id) < threadNum
         }
         if( threadActive ) // if the thread is active for this iteration
         {

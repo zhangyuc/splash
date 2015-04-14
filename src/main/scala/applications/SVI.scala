@@ -17,10 +17,10 @@ class DocBatch extends Serializable{
 class SVI {
   val train = (vocfile:String, docfile:String) => {
     val spc = new StreamProcessContext
-    spc.numOfThread = 64
-    spc.applyAdaptiveReweighting = true
-    spc.reweight = 64
-    spc.adaptiveReweightingSampleRatio = 0.1
+    spc.threadNum = 64
+    spc.useAdaptiveWeight = true
+    spc.weight = 64
+    spc.adaptiveWeightSampleRatio = 0.1
 
     val num_of_pass = 1000
     val num_of_partition = 64

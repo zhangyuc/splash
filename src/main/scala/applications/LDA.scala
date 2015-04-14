@@ -8,10 +8,9 @@ class LDA {
   
   val train = (vocfile:String, docfile:String) => {
     val spc = new StreamProcessContext
-    spc.numOfThread = 64
-    spc.applyAdaptiveReweighting = true
-    spc.reweight = 64
-    spc.adaptiveReweightingSampleRatio = 0.1
+    spc.threadNum = 64
+    spc.useAdaptiveWeight = true
+    spc.adaptiveWeightSampleRatio = 0.1
 
     val num_of_pass = 100
     val num_of_partition = 64
@@ -65,7 +64,7 @@ class LDA {
     }
     val paraRdd = new ParametrizedRDD[(Int,(Int,Boolean))]( data )
     paraRdd.process_func = this.update
-    // paraRdd.evaluate_func = this.evaluateTrainLoss
+    paraRdd.evaluate_func = this.evaluateTrainLoss
     
     paraRdd.foreachSharedVariable(preprocess)
     paraRdd.foreach(initialize)

@@ -10,10 +10,9 @@ import splash._
 class BPR {
   def train(filename:String) {
     val spc = new StreamProcessContext
-    spc.numOfThread = 64
-    spc.applyAdaptiveReweighting = true
-    spc.reweight = 1
-    spc.adaptiveReweightingSampleRatio = 0.1
+    spc.threadNum = 64
+    spc.useAdaptiveWeight = true
+    spc.adaptiveWeightSampleRatio = 0.1
     
     val num_of_partition = 64
     val num_of_pass = 1000
@@ -62,7 +61,7 @@ class BPR {
     for( i <- 0 until num_of_pass ){
       paraRdd.streamProcess(spc)
       val loss = paraRdd.map(evaluateTestLoss).reduce( (a,b) => a+b ) / testFreq
-      println("%5.3f\t%5.8f\t%d".format(paraRdd.totalTimeEllapsed, 1-loss, paraRdd.proposedWeight.toInt))
+      println("%5.3f\t%5.8f\t%d".format(paraRdd.totalTimeEllapsed, 1-loss, paraRdd.proposedWeight))
     }
   }
   
@@ -215,7 +214,7 @@ class BPR {
 }
 
 // data generator
-object BPRDataGenerator{
+/*object BPRDataGenerator{
   def main(args: Array[String]) {
     val files = new File("/home/yuczhang/Downloads/download/training_set").listFiles
     for(file <- files){
@@ -233,4 +232,4 @@ object BPRDataGenerator{
       }
     }
   }
-}
+}*/

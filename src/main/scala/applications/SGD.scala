@@ -7,11 +7,9 @@ import splash._
 class SGD {
   def train(filename:String){
     val spc = new StreamProcessContext
-    spc.numOfThread = 64
-    spc.batchSize = 1.0
-    spc.applyAdaptiveReweighting = true
-    spc.reweight = 64
-    spc.adaptiveReweightingSampleRatio = 0.1
+    spc.threadNum = 64
+    spc.useAdaptiveWeight = true
+    spc.adaptiveWeightSampleRatio = 0.1
     
     val num_of_partition = 64
     val num_of_pass = 1000
@@ -58,19 +56,37 @@ class SGD {
     val paraRdd = new ParametrizedRDD[(Int, Array[String], Array[Double])]( data )
     paraRdd.foreachSharedVariable(preprocess)
     paraRdd.process_func = this.update
-    paraRdd.evaluate_func = this.evaluateTestLoss
+    paraRdd.evaluate_func = this.evaluateTrainLoss
     
     for( i <- 0 until num_of_pass ){
       paraRdd.foreachSharedVariable(preIterationProcess)
       paraRdd.streamProcess(spc)
       val loss = paraRdd.map(evaluateTestLoss).reduce( (a,b) => a+b ) / n
-      println("%5.3f\t%5.8f\t%f".format(paraRdd.totalTimeEllapsed, loss, paraRdd.proposedWeight))
+      println("%5.3f\t%5.8f\t".format(paraRdd.totalTimeEllapsed, loss) + paraRdd.proposedWeight)
     }
     
     // output
     val sharedVar = paraRdd.getFirstSharedVariable()
     SimpleApp.print_values(sharedVar)
     //stackedRdd.toRDD().saveAsTextFile(filename + ".post")
+  }
+  
+  val evaluateTrainLoss = (entry: (Int, Array[String], Array[Double]), sharedVar : ParameterSet,  localVar: ParameterSet ) => {
+    val y = entry._1
+    val x_key = entry._2
+    val x_value = entry._3
+    
+    var y_predict = 0.0
+    for(i <- 0 until x_key.length){
+      y_predict += sharedVar.get("w:"+x_key(i)) * x_value(i)
+    }
+    val loss = math.log( 1.0 + math.exp( - y * y_predict ) )
+    if( loss < 100 ){
+      loss
+    }
+    else{
+      - y * y_predict
+    }
   }
   
   val evaluateTestLoss = (entry: (Int, Array[String], Array[Double]), sharedVar : ParameterSet,  localVar: ParameterSet ) => {

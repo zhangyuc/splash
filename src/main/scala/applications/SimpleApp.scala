@@ -15,7 +15,7 @@ object SimpleApp {
       (new SGD).train(root_path + "covtype.txt")
     }
     if(model.equals("GD")){
-      (new GD).train(root_path + "covtype.txt")
+      (new GD).train(root_path + "covtype.txt") 
     }
     if(model.equals("LDA-Gibbs")){
       (new LDA).train(root_path + "vocab.nips.txt", root_path + "docword.nips.txt")
