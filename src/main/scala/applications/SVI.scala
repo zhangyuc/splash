@@ -18,8 +18,6 @@ class SVI {
   val train = (vocfile:String, docfile:String) => {
     val spc = new StreamProcessContext
     spc.threadNum = 64
-    spc.useAdaptiveWeight = true
-    spc.weight = 64
     spc.adaptiveWeightSampleRatio = 0.1
 
     val num_of_pass = 1000
@@ -98,7 +96,7 @@ class SVI {
       sharedVar.set("alpha",alpha)
       sharedVar.set("beta",beta)
     }
-    val paraRdd = new ParametrizedRDD[DocBatch]( data )
+    val paraRdd = new ParametrizedRDD(data, true)
     paraRdd.process_func = this.update
     paraRdd.evaluate_func = this.evaluateTrainLoss
     paraRdd.postprocess_func = this.postprocess

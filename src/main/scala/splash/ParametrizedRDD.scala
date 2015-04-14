@@ -27,14 +27,22 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
   
   var iterNum = 0
   
-  def this( initRdd : rdd.RDD[T], rand : Random = new Random, partitioner : Partitioner = new HashPartitioner(1) ){
+  def this( initRdd : rdd.RDD[T], preservePartitioning : Boolean = false ){
     this()
-    length = initRdd.count()
-    streamPartitioner = partitioner
+    val repartitioned_rdd = {
+      if(preservePartitioning){
+        initRdd
+      }
+      else{
+        initRdd.repartition(initRdd.context.defaultParallelism)
+      }
+    }
+    length = repartitioned_rdd.count()
+    streamPartitioner = new HashPartitioner(1)
     numOfBlock = streamPartitioner.numPartitions
-    numOfWorkset = initRdd.partitions.length
-    globalRnd = rand
-    worksets = generateWorkSets(initRdd)
+    numOfWorkset = repartitioned_rdd.partitions.length
+    globalRnd = new Random
+    worksets = generateWorkSets(repartitioned_rdd)
   }
   
   def getTotalTimeEllapsed = totalTimeEllapsed
@@ -126,12 +134,21 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
   
   def streamProcess (spc: StreamProcessContext){
     refresh()
-    if(iterNum == 0 && spc.warmStart && spc.threadNum > 1 && spc.useAdaptiveWeight){
-      takePass(globalRnd, worksets, process_func, evaluate_func, postprocess_func, spc.set("num.of.thread", "1"))
-      takePass(globalRnd, worksets, process_func, evaluate_func, postprocess_func, spc)
+    val new_spc = {
+      if(spc.threadNum == 0){
+        spc.set("num.of.thread", worksets.partitions.length)
+      }
+      else{
+        spc.set("num.of.thread", math.min(spc.threadNum, worksets.partitions.length))
+      }
+    }
+    
+    if(iterNum == 0 && new_spc.warmStart && new_spc.threadNum > 1){
+      takePass(globalRnd, worksets, process_func, evaluate_func, postprocess_func, new_spc.set("num.of.thread", "1"))
+      takePass(globalRnd, worksets, process_func, evaluate_func, postprocess_func, new_spc)
     }
     else{
-      takePass(globalRnd, worksets, process_func, evaluate_func, postprocess_func, spc)
+      takePass(globalRnd, worksets, process_func, evaluate_func, postprocess_func, new_spc)
     }
     iterNum += 1
   }
@@ -267,7 +284,7 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     
     // assign variables
     val applyAdaptiveReweighting = {
-      spc.useAdaptiveWeight == true && spc.threadNum > 1
+      spc.weight == 0.0 && spc.threadNum > 1
     }
     
     val beta = 0.9
@@ -303,7 +320,7 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
           aws.getAdaWeight(rnd, worksets, process_func, evaluate_func, postprocess_func, spc, priorityArray.value)
         }
         else{
-          spc.weight
+          math.max(1.0, spc.weight)
         }
       }
       this.proposedWeight = reweight

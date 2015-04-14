@@ -9,7 +9,6 @@ class LDA {
   val train = (vocfile:String, docfile:String) => {
     val spc = new StreamProcessContext
     spc.threadNum = 64
-    spc.useAdaptiveWeight = true
     spc.adaptiveWeightSampleRatio = 0.1
 
     val num_of_pass = 100
@@ -62,7 +61,7 @@ class LDA {
       sharedVar.set("alpha",alpha)
       sharedVar.set("beta",beta)
     }
-    val paraRdd = new ParametrizedRDD[(Int,(Int,Boolean))]( data )
+    val paraRdd = new ParametrizedRDD(data, true)
     paraRdd.process_func = this.update
     paraRdd.evaluate_func = this.evaluateTrainLoss
     

@@ -8,7 +8,6 @@ class SGD {
   def train(filename:String){
     val spc = new StreamProcessContext
     spc.threadNum = 64
-    spc.useAdaptiveWeight = true
     spc.adaptiveWeightSampleRatio = 0.1
     
     val num_of_partition = 64
@@ -53,7 +52,7 @@ class SGD {
     }
     
     // take several passes over the dataset
-    val paraRdd = new ParametrizedRDD[(Int, Array[String], Array[Double])]( data )
+    val paraRdd = new ParametrizedRDD(data, true)
     paraRdd.foreachSharedVariable(preprocess)
     paraRdd.process_func = this.update
     paraRdd.evaluate_func = this.evaluateTrainLoss

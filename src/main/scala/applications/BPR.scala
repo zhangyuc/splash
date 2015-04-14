@@ -11,7 +11,6 @@ class BPR {
   def train(filename:String) {
     val spc = new StreamProcessContext
     spc.threadNum = 64
-    spc.useAdaptiveWeight = true
     spc.adaptiveWeightSampleRatio = 0.1
     
     val num_of_partition = 64
@@ -49,7 +48,7 @@ class BPR {
     }
     
     // take several passes over the dataset
-    val paraRdd = new ParametrizedRDD[(Int, (Int, Boolean))]( data )
+    val paraRdd = new ParametrizedRDD(data, true)
     paraRdd.process_func = this.update
     // paraRdd.evaluate_func = this.evaluateTrainLoss
     
