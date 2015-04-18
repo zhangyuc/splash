@@ -9,8 +9,10 @@ class LDA {
   val train = (vocfile:String, docfile:String) => {
     val spc = new StreamProcessContext
     spc.threadNum = 64
-    spc.adaptiveWeightSampleRatio = 0.1
-
+    spc.adaptiveWeightFoldNum = 1
+    spc.weight = 1
+    spc.warmStart = false
+    
     val num_of_pass = 100
     val num_of_partition = 64
     val num_of_topic = 100
@@ -34,10 +36,11 @@ class LDA {
         }
       }
       list.iterator
-    }).partitionBy(new HashPartitioner(num_of_partition)).cache()
+    }).repartition(num_of_partition).cache()
     
     val freq = data.count()
     val testFreq = data.filter( a => (a._2._2 == false) ).count()
+    val trainFreq = freq - testFreq
     
     // read vocabulary
     val vocabulary = new HashMap[Int, String]
@@ -52,7 +55,7 @@ class LDA {
     // print basic information
     println("Latent Dirichlet Allocation")
     println("vocabulary size = " + voc_size)
-    println("found " + (freq - testFreq) + " tokens for training and " + testFreq + " tokens for testing.")
+    println("found " + trainFreq + " tokens for training and " + testFreq + " tokens for testing.")
     
     // manager start processing data
     val preprocess = (sharedVar:ParameterSet) => {
@@ -68,8 +71,6 @@ class LDA {
     paraRdd.foreachSharedVariable(preprocess)
     paraRdd.foreach(initialize)
     paraRdd.syncSharedVariable()
-    val loss = math.exp( paraRdd.map(evaluateTestLoss).reduce( (a,b) => a+b ) / testFreq )
-    println("%5.3f\t%5.5f\t%f".format(paraRdd.totalTimeEllapsed, loss, paraRdd.proposedWeight))
 
     // take several passes over the dataset
     for(i <- 0 until num_of_pass){  
@@ -99,10 +100,6 @@ class LDA {
       println()
       println()
     }
-    
-    // output
-    SimpleApp.print_values(sharedVar)
-    //stackedRdd.toRDD().saveAsTextFile(docfile + ".post")
   }
   
   val evaluateTrainLoss = (entry:(Int,(Int,Boolean)), sharedVar : ParameterSet,  localVar: ParameterSet ) => {
@@ -166,10 +163,10 @@ class LDA {
       val word_freq = 1.0
       
       val init_topic = Random.nextInt(num_of_topic)
-      sharedVar.update( "w:"+init_topic+":"+word_id, word_freq, UpdateType.Push )
-      sharedVar.update( "wa:" + init_topic, word_freq, UpdateType.Push  )
-      sharedVar.update("d:"+init_topic+":"+doc_id, word_freq, UpdateType.Keep )
-      sharedVar.update("da:" + doc_id, word_freq, UpdateType.Keep )
+      sharedVar.update( "w:"+init_topic+":"+word_id, word_freq)
+      sharedVar.update( "wa:" + init_topic, word_freq)
+      sharedVar.update("d:"+init_topic+":"+doc_id, word_freq)
+      sharedVar.update("da:" + doc_id, word_freq )
       localVar.set("T", init_topic + 1 )
     }
   }
@@ -187,19 +184,19 @@ class LDA {
       
       val old_topic = localVar.get("T").toInt - 1
       if(old_topic >= 0){
-        sharedVar.updateWithUnitWeight( "w:"+old_topic+":"+word_id, - 1, UpdateType.Push )
-        sharedVar.updateWithUnitWeight( "wa:" + old_topic, - 1, UpdateType.Push )
-        sharedVar.updateWithUnitWeight( "d:"+old_topic+":"+doc_id, - 1, UpdateType.Keep )
-        sharedVar.updateWithUnitWeight( "da:" + doc_id, - 1, UpdateType.Keep )
+        sharedVar.updateWithUnitWeight( "w:"+old_topic+":"+word_id, - 1)
+        sharedVar.updateWithUnitWeight( "wa:" + old_topic, - 1)
+        sharedVar.updateWithUnitWeight( "d:"+old_topic+":"+doc_id, - 1)
+        sharedVar.updateWithUnitWeight( "da:" + doc_id, - 1)
       }
       
       // calculate the probability that this word belongs to some topic
       val prob = new Array[Double](num_of_topic)
       var sum_prob = 0.0
       for(tid <- 0 until num_of_topic){
-        val tw = math.max(0, sharedVar.get("w:"+tid+":"+word_id))
-        val tw_all = math.max(0, sharedVar.get("wa:" + tid))
-        val td = math.max(0, sharedVar.get("d:"+tid+":"+doc_id))
+        val tw = sharedVar.get("w:"+tid+":"+word_id)
+        val tw_all = sharedVar.get("wa:" + tid)
+        val td = sharedVar.get("d:"+tid+":"+doc_id)
         prob(tid) = (td + alpha) * (tw + beta) / (tw_all + beta * voc_size)
         sum_prob += prob(tid)
       }
@@ -217,10 +214,10 @@ class LDA {
       }
       
       // update shared variables
-      sharedVar.update( "w:"+new_topic+":"+word_id, weight, UpdateType.Push )
-      sharedVar.update( "wa:" + new_topic, weight, UpdateType.Push  )
-      sharedVar.update( "d:"+new_topic+":"+doc_id, weight, UpdateType.Keep )
-      sharedVar.update( "da:" + doc_id, weight, UpdateType.Keep )
+      sharedVar.update( "w:"+new_topic+":"+word_id, weight)
+      sharedVar.update( "wa:" + new_topic, weight)
+      sharedVar.update( "d:"+new_topic+":"+doc_id, weight)
+      sharedVar.update( "da:" + doc_id, weight)
       
       // update local variable
       localVar.set("T", new_topic + 1 )

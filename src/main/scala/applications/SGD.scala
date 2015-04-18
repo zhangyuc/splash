@@ -7,8 +7,8 @@ import splash._
 class SGD {
   def train(filename:String){
     val spc = new StreamProcessContext
+    spc.adaptiveWeightFoldNum = 1
     spc.threadNum = 64
-    spc.adaptiveWeightSampleRatio = 0.1
     
     val num_of_partition = 64
     val num_of_pass = 1000
@@ -63,11 +63,6 @@ class SGD {
       val loss = paraRdd.map(evaluateTestLoss).reduce( (a,b) => a+b ) / n
       println("%5.3f\t%5.8f\t".format(paraRdd.totalTimeEllapsed, loss) + paraRdd.proposedWeight)
     }
-    
-    // output
-    val sharedVar = paraRdd.getFirstSharedVariable()
-    SimpleApp.print_values(sharedVar)
-    //stackedRdd.toRDD().saveAsTextFile(filename + ".post")
   }
   
   val evaluateTrainLoss = (entry: (Int, Array[String], Array[Double]), sharedVar : ParameterSet,  localVar: ParameterSet ) => {

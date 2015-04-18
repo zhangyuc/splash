@@ -9,16 +9,24 @@ import breeze.numerics.digamma
 import splash._
 
 class DocBatch extends Serializable{
-  val docs = new ListBuffer[(Int, collection.Iterable[(Int, Boolean)])]
+  val docs = new ListBuffer[Doc]
   var testFreq = 0
   var freq = 0
+}
+
+class Doc extends Serializable{
+  var docID = 0
+  var forTrain = true
+  var words : collection.Iterable[(Int,Boolean)] = null
 }
 
 class SVI {
   val train = (vocfile:String, docfile:String) => {
     val spc = new StreamProcessContext
+    spc.adaptiveWeightFoldNum = 1
+    spc.warmStart = false
     spc.threadNum = 64
-    spc.adaptiveWeightSampleRatio = 0.1
+    spc.weight = 1
 
     val num_of_pass = 1000
     val num_of_partition = 64
@@ -36,12 +44,7 @@ class SVI {
       val list = new ListBuffer[(Int,(Int,Boolean))]
       if(tokens.length == 3){
         for(i <- 0 until tokens(2).toInt){
-          if(Random.nextDouble() < 0.5){
-            list.append((tokens(0).toInt, (tokens(1).toInt, true)))
-          }
-          else{
-            list.append((tokens(0).toInt, (tokens(1).toInt, false)))
-          }
+          list.append((tokens(0).toInt, (tokens(1).toInt, (Random.nextDouble() < 0.5))))
         }
       }
       list.iterator
@@ -49,11 +52,20 @@ class SVI {
       var count = 0
       val batchlist = new ListBuffer[DocBatch]
       var currentBatch = new DocBatch
+      var isTrain = true
       while(iter.hasNext){
-        val doc = iter.next()
+        val doc_wordlist = iter.next()
+        val doc = new Doc
+        doc.docID = doc_wordlist._1
+        doc.words = doc_wordlist._2
+        doc.forTrain = isTrain
+        isTrain = !isTrain
+        
         currentBatch.docs.append(doc)
-        currentBatch.freq += doc._2.count( x => true)
-        currentBatch.testFreq += doc._2.count( a => a._2 == false )
+        currentBatch.freq += doc.words.count( x => true)
+        if(!doc.forTrain){
+          currentBatch.testFreq += doc.words.count( a => a._2 == false )
+        }
         count += 1
         if(count == minibatch_size){
           batchlist.append(currentBatch)
@@ -104,13 +116,11 @@ class SVI {
     paraRdd.foreachSharedVariable(preprocess)
     paraRdd.foreach(initialize)
     paraRdd.syncSharedVariable()
-    val loss = math.exp( paraRdd.map(evaluateTestLoss).reduce( (a,b) => a+b ) / testFreq )
-    println("%5.3f\t%5.5f\t%f".format(paraRdd.totalTimeEllapsed, loss, paraRdd.proposedWeight))
-
+    
     // take several passes over the dataset
     for(i <- 0 until num_of_pass){  
       paraRdd.streamProcess(spc)
-      val loss = math.exp( paraRdd.map(evaluateTestLoss).reduce( (a,b) => a+b ) / testFreq )
+      val loss = - paraRdd.map(evaluateTestLoss).reduce( (a,b) => a+b ) / testFreq
       println("%5.3f\t%5.5f\t%f".format(paraRdd.totalTimeEllapsed, loss, paraRdd.proposedWeight))
     }
     
@@ -162,23 +172,23 @@ class SVI {
     
     // compute gamma and lambda using variational inference
     var loss = 0.0
-    for(entry <- docBatch.docs){
-      val doc_id = entry._1
-      for(word_entry <- entry._2){
-        if(word_entry._2 == true){
-          val word_id = word_entry._1
-          val phi = new Array[Double](num_of_topic)
-          var sum = 0.0
-          for(tid <- 0 until num_of_topic){
-            val t1 = (localVar.get("g:"+doc_id+":"+tid) + alpha) / (localVar.get("g_all:"+doc_id) + alpha * num_of_topic) 
-            val t2 = (sharedVar.get("l:"+tid + ":" + word_id) + beta) / (sharedVar.get("l_all:"+tid) + beta * voc_size)
-            sum += t1 * t2
-          }
-          loss -= math.log(sum)
+    var count = 0
+    for(entry <- docBatch.docs.filter( doc => doc.forTrain )){
+      val doc_id = entry.docID
+      for(word_entry <- entry.words){
+        val word_id = word_entry._1
+        val phi = new Array[Double](num_of_topic)
+        var sum = 0.0
+        for(tid <- 0 until num_of_topic){
+          val t1 = (localVar.get("g:"+doc_id+":"+tid) + alpha) / (localVar.get("g_all:"+doc_id) + alpha * num_of_topic) 
+          val t2 = (sharedVar.get("l:"+tid + ":" + word_id) + beta) / (sharedVar.get("l_all:"+tid) + beta * voc_size)
+          sum += t1 * t2
         }
+        loss -= math.log(sum)
+        count += 1
       }
     }
-    loss
+    loss / count
   }
   
   val evaluateTestLoss = (docBatch:DocBatch, sharedVar : ParameterSet,  localVar: ParameterSet ) => {
@@ -189,58 +199,11 @@ class SVI {
     
     // compute gamma and lambda using variational inference
     var loss = 0.0
-    for(entry <- docBatch.docs){
-      val doc_id = entry._1
-      for(word_entry <- entry._2){
-        if(word_entry._2 == false){
-          val word_id = word_entry._1
-          val phi = new Array[Double](num_of_topic)
-          var sum = 0.0
-          for(tid <- 0 until num_of_topic){
-            val t1 = (localVar.get("g:"+doc_id+":"+tid) + alpha) / (localVar.get("g_all:"+doc_id) + alpha * num_of_topic) 
-            val t2 = (sharedVar.get("l:"+tid + ":" + word_id) + beta) / (sharedVar.get("l_all:"+tid) + beta * voc_size)
-            sum += t1 * t2
-          }
-          loss -= math.log(sum)
-        }
-      }
-    }
-    loss
-  }
-  
-  val initialize = (docBatch:DocBatch, sharedVar : ParameterSet,  localVar: ParameterSet ) => {
-    val num_of_topic = sharedVar.get("num_of_topic").toInt
-    for(entry <- docBatch.docs)
-    {
-      val doc_id = entry._1
-      for(word_entry <- entry._2){
-        if(word_entry._2 == true){
-          val word_id = word_entry._1
-          val init_topic = Random.nextInt(num_of_topic)
-          sharedVar.update( "l:"+init_topic+":"+word_id, 1.0)
-          sharedVar.update( "l_all:" + init_topic, 1.0 )
-        }
-      }
-    }
-  }
-  
-  val update = ( rnd: Random, docBatch:DocBatch, weight : Double, sharedVar : ParameterSet,  localVar: ParameterSet ) => {
-    val t = sharedVar.get("t")
-    val voc_size = sharedVar.get("voc_size").toInt
-    val num_of_topic = sharedVar.get("num_of_topic").toInt
-    val num_of_doc = sharedVar.get("num_of_doc").toInt
-    val num_of_partition = sharedVar.get("num_of_partition")
-    val alpha = sharedVar.get("alpha")
-    val beta = sharedVar.get("beta")
-    val lambda = new Array[HashMap[Int,Double]](num_of_topic)
-    for(tid <- 0 until num_of_topic){
-      lambda(tid) = new HashMap[Int,Double]
-    }
-    
-    for(entry <- docBatch.docs)
-    {
+    for(entry <- docBatch.docs.filter( doc => !doc.forTrain)){
+      val doc_id = entry.docID
+      
+      // training using observed data in test set
       // initialize gamma
-      val doc_id = entry._1
       val gamma = new Array[Double](num_of_topic)
       var gamma_all = 0.0
       for(tid <- 0 until num_of_topic){
@@ -254,23 +217,21 @@ class SVI {
         val new_gamma = new Array[Double](num_of_topic)
         var new_gamma_all = 0.0
         
-        for(word_entry <- entry._2){
-          if(word_entry._2 == true){
-            val word_id = word_entry._1
-            val phi = new Array[Double](num_of_topic)
-            var sum = 0.0
-            for(tid <- 0 until num_of_topic){
-              phi(tid) = math.exp({
-                val t1 = digamma(gamma(tid) + alpha) - digamma(gamma_all + alpha * num_of_topic) 
-                val t2 = digamma(sharedVar.get("l:"+tid + ":" + word_id) + beta) - digamma(sharedVar.get("l_all:"+tid) + beta * voc_size)
-                t1+t2
-              })
-              sum += phi(tid)
-            }
-            for(tid <- 0 until num_of_topic){
-              new_gamma(tid) += phi(tid) / sum
-              new_gamma_all += phi(tid) / sum
-            }
+        for(word_entry <- entry.words.filter( w => w._2 == true )){
+          val word_id = word_entry._1
+          val phi = new Array[Double](num_of_topic)
+          var sum = 0.0
+          for(tid <- 0 until num_of_topic){
+            phi(tid) = math.exp({
+              val t1 = digamma(gamma(tid) + alpha) - digamma(gamma_all + alpha * num_of_topic) 
+              val t2 = digamma(sharedVar.get("l:"+tid + ":" + word_id) + beta) - digamma(sharedVar.get("l_all:"+tid) + beta * voc_size)
+              t1+t2
+            })
+            sum += phi(tid)
+          }
+          for(tid <- 0 until num_of_topic){
+            new_gamma(tid) += phi(tid) / sum
+            new_gamma_all += phi(tid) / sum
           }
         }
         
@@ -289,9 +250,104 @@ class SVI {
       }
       localVar.set("g_all:" + doc_id, gamma_all)
       
-      // update lambda
-      for(word_entry <- entry._2){
-        if(word_entry._2 == true){
+      // testing using held-out data in test set
+      for(word_entry <- entry.words.filter( w => w._2 == false )){
+        val word_id = word_entry._1
+        val phi = new Array[Double](num_of_topic)
+        var sum = 0.0
+        for(tid <- 0 until num_of_topic){
+          val t1 = (gamma(tid) + alpha) / (gamma_all + alpha * num_of_topic) 
+          val t2 = (sharedVar.get("l:"+tid + ":" + word_id) + beta) / (sharedVar.get("l_all:"+tid) + beta * voc_size)
+          sum += t1 * t2
+        }
+        loss -= math.log(sum)
+      }
+    }
+    loss
+  }
+  
+  val initialize = (docBatch:DocBatch, sharedVar : ParameterSet,  localVar: ParameterSet ) => {
+    val num_of_topic = sharedVar.get("num_of_topic").toInt
+    for(entry <- docBatch.docs.filter( doc => doc.forTrain))
+    {
+      val doc_id = entry.docID
+      for(word_entry <- entry.words){
+        val word_id = word_entry._1
+        val init_topic = Random.nextInt(num_of_topic)
+        sharedVar.update( "l:"+init_topic+":"+word_id, 1.0)
+        sharedVar.update( "l_all:" + init_topic, 1.0 )
+      }
+    }
+  }
+  
+  val update = ( rnd: Random, docBatch:DocBatch, weight : Double, sharedVar : ParameterSet,  localVar: ParameterSet ) => {
+    val t = sharedVar.get("t")
+    val voc_size = sharedVar.get("voc_size").toInt
+    val num_of_topic = sharedVar.get("num_of_topic").toInt
+    val num_of_doc = sharedVar.get("num_of_doc").toInt
+    val num_of_partition = sharedVar.get("num_of_partition")
+    val alpha = sharedVar.get("alpha")
+    val beta = sharedVar.get("beta")
+    val lambda = new Array[HashMap[Int,Double]](num_of_topic)
+    val num_of_train_doc = docBatch.docs.count( doc => doc.forTrain )
+      
+    for(tid <- 0 until num_of_topic){
+      lambda(tid) = new HashMap[Int,Double]
+    }
+    
+    for(doc <- docBatch.docs.filter(doc => doc.forTrain))
+    {
+      if(doc.forTrain){
+        // initialize gamma
+        val doc_id = doc.docID
+        val gamma = new Array[Double](num_of_topic)
+        var gamma_all = 0.0
+        for(tid <- 0 until num_of_topic){
+          gamma(tid) = localVar.get("g:"+doc_id+":"+tid)
+          gamma_all += gamma(tid)
+        }
+        
+        // recompute gamma until convergence
+        var delta_gamma = 1e6
+        while(delta_gamma > 0.01){
+          val new_gamma = new Array[Double](num_of_topic)
+          var new_gamma_all = 0.0
+          
+          for(word_entry <- doc.words){
+            val word_id = word_entry._1
+            val phi = new Array[Double](num_of_topic)
+            var sum = 0.0
+            for(tid <- 0 until num_of_topic){
+              phi(tid) = math.exp({
+                val t1 = digamma(gamma(tid) + alpha) - digamma(gamma_all + alpha * num_of_topic) 
+                val t2 = digamma(sharedVar.get("l:"+tid + ":" + word_id) + beta) - digamma(sharedVar.get("l_all:"+tid) + beta * voc_size)
+                t1+t2
+              })
+              sum += phi(tid)
+            }
+            for(tid <- 0 until num_of_topic){
+              new_gamma(tid) += phi(tid) / sum
+              new_gamma_all += phi(tid) / sum
+            }
+          }
+          
+          // measure the change of gamma
+          delta_gamma = 0
+          for(tid <- 0 until num_of_topic){
+            delta_gamma += (new_gamma(tid) - gamma(tid)).abs
+            gamma(tid) = new_gamma(tid)
+            gamma_all = new_gamma_all
+          }
+        }
+        
+        // update gamma
+        for(tid <- 0 until num_of_topic){
+          localVar.set("g:" + doc_id + ":" + tid, gamma(tid))
+        }
+        localVar.set("g_all:" + doc_id, gamma_all)
+        
+        // update lambda
+        for(word_entry <- doc.words){
           val word_id = word_entry._1
           val phi = new Array[Double](num_of_topic)
           var sum = 0.0
@@ -304,14 +360,14 @@ class SVI {
             sum += phi(tid)
           }
           for(tid <- 0 until num_of_topic){
-            lambda(tid).put(word_id, lambda(tid).applyOrElse(word_id, (x:Any)=>0.0) + num_of_doc.toDouble / docBatch.docs.length * phi(tid) / sum )
+            lambda(tid).put(word_id, lambda(tid).applyOrElse(word_id, (x:Any)=>0.0) + num_of_doc.toDouble / num_of_train_doc * phi(tid) / sum )
           }
         }
       }
     }
     
     // update lambda as shared variable
-    val nos = 1.0
+    val nos = 1
     val stepsize = math.min(1.0, nos * math.pow(64.0 + t, - 0.7))
     
     for(tid <- 0 until num_of_topic){

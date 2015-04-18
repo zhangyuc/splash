@@ -69,21 +69,25 @@ class ParameterSet extends Serializable{
     }
     this
   }
-  
-  def rescaleDelta(factor:Double){
-    for(key <- delta.keySet){
-      val dv = delta(key)
-      delta.put(key, (dv._1 * factor, dv._2, dv._3))
+    
+  def applyDelta(target_delta: HashMap[String, Double], coefficient : Double = 1.0){
+    for(pair <- target_delta){
+      this.set(pair._1, getOldValue(pair._1) + coefficient * pair._2 )
     }
+    delta.clear()
   }
   
-  def applyDelta(target_delta: HashMap[String, (Double, Double, UpdateType.Value)] = this.delta, coefficient : Double = 1.0) = {
+  def applySelf(backup : Boolean = false) = {
+    val target_delta = delta
+    val backup_delta = new HashMap[String, Double]
     for(pair <- target_delta){
-      this.set(pair._1, getOldValue(pair._1) + coefficient * (pair._2._1 + pair._2._2) )
+      this.set(pair._1, getOldValue(pair._1) + pair._2._1 / rescaleFactor + pair._2._2 )
+      if(backup){
+        backup_delta.put(pair._1, pair._2._1 / rescaleFactor + pair._2._2)
+      }
     }
-    val old_delta = delta
-    delta = new HashMap[String, (Double, Double, UpdateType.Value)]
-    old_delta
+    delta.clear()
+    backup_delta
   }
   
   def clear() {

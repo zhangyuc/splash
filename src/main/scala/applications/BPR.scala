@@ -10,8 +10,9 @@ import splash._
 class BPR {
   def train(filename:String) {
     val spc = new StreamProcessContext
+    spc.adaptiveWeightFoldNum = 1
     spc.threadNum = 64
-    spc.adaptiveWeightSampleRatio = 0.1
+    spc.warmStart = false
     
     val num_of_partition = 64
     val num_of_pass = 1000
@@ -50,7 +51,7 @@ class BPR {
     // take several passes over the dataset
     val paraRdd = new ParametrizedRDD(data, true)
     paraRdd.process_func = this.update
-    // paraRdd.evaluate_func = this.evaluateTrainLoss
+    paraRdd.evaluate_func = this.evaluateTrainLoss
     
     paraRdd.foreachSharedVariable(preprocess)
     paraRdd.foreachSharedVariable(initialize)
@@ -60,7 +61,7 @@ class BPR {
     for( i <- 0 until num_of_pass ){
       paraRdd.streamProcess(spc)
       val loss = paraRdd.map(evaluateTestLoss).reduce( (a,b) => a+b ) / testFreq
-      println("%5.3f\t%5.8f\t%d".format(paraRdd.totalTimeEllapsed, 1-loss, paraRdd.proposedWeight))
+      println("%5.3f\t%5.8f\t%d".format(paraRdd.totalTimeEllapsed, 1-loss, paraRdd.proposedWeight.toInt))
     }
   }
   

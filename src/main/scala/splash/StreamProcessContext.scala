@@ -4,8 +4,9 @@ class StreamProcessContext {
   var threadNum = 0
   var weight = 0.0
   var adaptiveWeightSampleRatio = 0.1
-  var batchSize = 1.0
+  var adaptiveWeightFoldNum = 2
   var warmStart : Boolean = true
+  var batchSize = 1.0
   
   def set(key:String, value:String) = {
     val spc = new StreamProcessContext
@@ -17,9 +18,6 @@ class StreamProcessContext {
     }
     if(key.equals("weight")){
       spc.weight = value.toDouble
-    }
-    if(key.equals("adaptive.weight.sample.ratio")){
-      spc.adaptiveWeightSampleRatio = value.toDouble
     }
     if(key.equals("data.per.iteration")){
       spc.batchSize = value.toDouble
@@ -40,9 +38,6 @@ class StreamProcessContext {
     }
     if(key.equals("weight")){
       spc.weight = value.toDouble
-    }
-    if(key.equals("adaptive.weight.sample.ratio")){
-      spc.adaptiveWeightSampleRatio = value.toDouble
     }
     if(key.equals("data.per.iteration")){
       spc.batchSize = value.toDouble

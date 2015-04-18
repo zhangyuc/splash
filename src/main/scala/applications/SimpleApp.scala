@@ -21,7 +21,7 @@ object SimpleApp {
       (new LDA).train(root_path + "vocab.nips.txt", root_path + "docword.nips.txt")
     }
     if(model.equals("LDA-SVI")){
-      (new SVI).train(root_path + "vocab.nips.txt", root_path + "docword.nips.txt")
+      (new SVI).train(root_path + "vocab.enron.txt", root_path + "docword.enron.txt")
     }
     if(model.equals("BPR")){
       (new BPR).train(root_path + "netflix.txt") 

@@ -66,7 +66,6 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     val f = func
     worksets.flatMap( workset => {
       workset.sharedVar.batchSize = workset.length
-      workset.sharedVar.rescaleFactor = 1.0
       for(block <- workset.blockArray){
         for(record <- block.recordArray){
           val localVar = new ParameterSet(record.variable)
@@ -82,7 +81,6 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     val f = func
     worksets.foreach( workset => {
       workset.sharedVar.batchSize = workset.length
-      workset.sharedVar.rescaleFactor = 1.0
       for(block <- workset.blockArray){
         for(record <- block.recordArray){
           val localVar = new ParameterSet(record.variable)
@@ -134,21 +132,12 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
   
   def streamProcess (spc: StreamProcessContext){
     refresh()
-    val new_spc = {
-      if(spc.threadNum == 0){
-        spc.set("num.of.thread", worksets.partitions.length)
-      }
-      else{
-        spc.set("num.of.thread", math.min(spc.threadNum, worksets.partitions.length))
-      }
-    }
-    
-    if(iterNum == 0 && new_spc.warmStart && new_spc.threadNum > 1){
-      takePass(globalRnd, worksets, process_func, evaluate_func, postprocess_func, new_spc.set("num.of.thread", "1"))
-      takePass(globalRnd, worksets, process_func, evaluate_func, postprocess_func, new_spc)
+    if(iterNum == 0 && spc.warmStart && spc.threadNum != 1){
+      takePass(globalRnd, worksets, process_func, evaluate_func, postprocess_func, spc.set("num.of.thread", "1"))
+      takePass(globalRnd, worksets, process_func, evaluate_func, postprocess_func, spc)
     }
     else{
-      takePass(globalRnd, worksets, process_func, evaluate_func, postprocess_func, new_spc)
+      takePass(globalRnd, worksets, process_func, evaluate_func, postprocess_func, spc)
     }
     iterNum += 1
   }
@@ -283,10 +272,6 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     spc : StreamProcessContext ) {
     
     // assign variables
-    val applyAdaptiveReweighting = {
-      spc.weight == 0.0 && spc.threadNum > 1
-    }
-    
     val beta = 0.9
     val num_of_workset = numOfWorkset
     var stepsizeSum = 0.0
@@ -303,7 +288,6 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
       
       val func = process_func
       val eval_func = evaluate_func
-      val threadNum = spc.threadNum 
       val post_func = postprocess_func
       
       val sc = worksets.context
@@ -311,35 +295,35 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
       
       val stepsize = spc.batchSize
       val process_rand_seed = rnd.nextInt(65536)
-      val adaptiveReweightingSampleRatio = spc.adaptiveWeightSampleRatio
       val iterStartTime = (new Date).getTime
       
       // determine reweight
-      val reweight = {
-        if(applyAdaptiveReweighting == true){
-          aws.getAdaWeight(rnd, worksets, process_func, evaluate_func, postprocess_func, spc, priorityArray.value)
+      val thread = {
+        if(spc.threadNum == 0){
+          worksets.partitions.length
         }
         else{
-          math.max(1.0, spc.weight)
+          spc.threadNum
         }
       }
-      this.proposedWeight = reweight
+      val factor = aws.getAdaWeight(rnd, worksets, process_func, evaluate_func, postprocess_func, spc, priorityArray.value)
+      this.proposedWeight = factor
       
       // process data in one split, and in parallel
       worksets.foreach(workset => {
         val batchsize = math.ceil(stepsize * workset.length).toInt
         val threadActive = {
-          if(threadNum == 1) workset.id == blockIteratorBroadcast
-          else priorityArray.value(workset.id) < threadNum
+          if(thread == 1) workset.id == blockIteratorBroadcast
+          else priorityArray.value(workset.id) < thread
         }
         if( threadActive ) // if the thread is active for this iteration
         {
           val rnd = new Random(process_rand_seed + workset.id)
           val sharedVar = workset.sharedVar
           sharedVar.batchSize = batchsize
-          sharedVar.rescaleFactor = reweight
+          sharedVar.rescaleFactor = factor
           
-          for(i <- 0 until batchsize){
+          for(i <- 0 until batchsize){ 
             val record = workset.nextRecord()
             val localVar = new ParameterSet(record.variable)
             func(rnd, record.line, sharedVar.rescaleFactor, sharedVar, localVar)
@@ -349,6 +333,7 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
           // construct a proposal
           val endTime = (new Date).getTime
           workset.prop = sharedVar.exportProposal()
+          sharedVar.rescaleFactor = 1.0
         }
         else{
           workset.prop = null
@@ -378,7 +363,7 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
         workset.prop = null
         if(post_func != null){
           post_func(workset.sharedVar)
-          workset.sharedVar.applyDelta()
+          workset.sharedVar.applySelf()
         }
       } )
       mergedProp.destroy()
