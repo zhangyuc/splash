@@ -23,19 +23,43 @@ class Doc extends Serializable{
 class SVI {
   val train = (vocfile:String, docfile:String) => {
     val spc = new StreamProcessContext
-    spc.adaptiveWeightFoldNum = 1
-    spc.warmStart = false
     spc.threadNum = 64
-    spc.weight = 1
-
+    spc.warmStart = false
+    var tmp_minibatch_size = 8
+    var init_batchsize = 0.0
+ 
+    if(vocfile.endsWith("vocab.nips.txt")){
+      tmp_minibatch_size = 8
+    }
+    if(vocfile.endsWith("vocab.enron.txt")){
+      tmp_minibatch_size = 24
+    }
+    if(vocfile.endsWith("vocab.nytimes.txt")){
+      tmp_minibatch_size = 128
+    }
+    
+    if(spc.threadNum == 64){
+      if(vocfile.endsWith("vocab.nips.txt")){
+        spc.dataPerIteraiton = 0.5
+        spc.groupNum = 1
+      }
+      if(vocfile.endsWith("vocab.enron.txt")){
+        spc.dataPerIteraiton = 0.2
+        init_batchsize = 1.0
+      }
+      if(vocfile.endsWith("vocab.nytimes.txt")){
+        spc.dataPerIteraiton = 0.2
+        init_batchsize = 0.5
+      }
+    }
+    
+    val minibatch_size = tmp_minibatch_size
     val num_of_pass = 1000
     val num_of_partition = 64
     val num_of_topic = 20
-    val minibatch_size = 8
-    val robustness = 0.0
     val alpha = 50.0 / num_of_topic
     val beta = 0.01
-    val conf = new SparkConf().setAppName("LDA-SVI Application").set("spark.driver.maxResultSize", "3G")
+    val conf = new SparkConf().setAppName("LDA-SVI Application").set("spark.driver.maxResultSize", "6G")
     val sc = new SparkContext(conf)
     
     // read data and repartition
@@ -100,71 +124,35 @@ class SVI {
     println("found " + (freq - testFreq) + " tokens for training and " + testFreq + " tokens for testing.")
     
     // manager start processing data
-    val preprocess = (sharedVar:ParameterSet) => {
+    val preprocess = (sharedVar: SharedVariableSet) => {
       sharedVar.set("voc_size", voc_size)
       sharedVar.set("num_of_doc", num_of_doc)
       sharedVar.set("num_of_topic", num_of_topic)
       sharedVar.set("num_of_partition", num_of_partition)
       sharedVar.set("alpha",alpha)
       sharedVar.set("beta",beta)
+      for(tid <- 0 until num_of_topic){
+        sharedVar.declareArray("l:"+tid, voc_size+1)
+      }
     }
     val paraRdd = new ParametrizedRDD(data, true)
     paraRdd.process_func = this.update
     paraRdd.evaluate_func = this.evaluateTrainLoss
-    paraRdd.postprocess_func = this.postprocess
     
     paraRdd.foreachSharedVariable(preprocess)
     paraRdd.foreach(initialize)
     paraRdd.syncSharedVariable()
-    
+
     // take several passes over the dataset
-    for(i <- 0 until num_of_pass){  
-      paraRdd.streamProcess(spc)
+    if(init_batchsize > 0) paraRdd.run(spc.set("num.of.thread", 1).set("data.per.iteration", init_batchsize))
+    for(i <- 0 until num_of_pass){
+      paraRdd.run(spc)
       val loss = - paraRdd.map(evaluateTestLoss).reduce( (a,b) => a+b ) / testFreq
-      println("%5.3f\t%5.5f\t%f".format(paraRdd.totalTimeEllapsed, loss, paraRdd.proposedWeight))
-    }
-    
-    // view topics and their top words
-    val sharedVar = paraRdd.getFirstSharedVariable()
-    val wordCount = new Array[ListBuffer[(Int, Double)]](num_of_topic)
-    for(tid <- 0 until num_of_topic){
-      wordCount(tid) = new ListBuffer[(Int, Double)]
-    }
-    for(kv_pair <- sharedVar.variable){
-      if(kv_pair._1.startsWith("l:")){
-        val tokens = kv_pair._1.split(":")
-        wordCount(tokens(1).toInt).append((tokens(2).toInt, kv_pair._2)) 
-      }
-    }
-    for(tid <- 0 until num_of_topic){
-      wordCount(tid) =  wordCount(tid).sortWith( (a,b) => a._2 > b._2 )
-      print("topic " + tid + ": ")
-      for(i <- 0 until math.min(20, wordCount(tid).length)){
-        print( vocabulary(wordCount(tid)(i)._1) + "(" + wordCount(tid)(i)._2 + ") " )
-      }
-      println()
-      println()
+      println("%5.3f\t%5.5f\t%f".format(paraRdd.totalTimeEllapsed, loss, paraRdd.proposedGroupNum))
     }
   }
   
-  val postprocess = (sharedVar : ParameterSet) => {
-    val voc_size = sharedVar.get("voc_size").toInt
-    val num_of_topic = sharedVar.get("num_of_topic").toInt
-    for(tid <- 0 until num_of_topic){
-      var sum = 0.0
-      for(word_id <- 1 to voc_size){
-        var lambda = sharedVar.get("l:"+tid+":"+word_id)
-        if(lambda < 0){
-          sharedVar.update("l:"+tid+":"+word_id, -lambda)
-          lambda = 0
-        }
-        sum += lambda
-      }
-      sharedVar.update("l_all:"+tid, sum - sharedVar.get("l_all:"+tid))
-    }
-  }
-  
-  val evaluateTrainLoss = (docBatch:DocBatch, sharedVar : ParameterSet,  localVar: ParameterSet ) => {
+  val evaluateTrainLoss = (docBatch:DocBatch, sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
     val voc_size = sharedVar.get("voc_size")
     val num_of_topic = sharedVar.get("num_of_topic").toInt
     val alpha = sharedVar.get("alpha")
@@ -181,7 +169,7 @@ class SVI {
         var sum = 0.0
         for(tid <- 0 until num_of_topic){
           val t1 = (localVar.get("g:"+doc_id+":"+tid) + alpha) / (localVar.get("g_all:"+doc_id) + alpha * num_of_topic) 
-          val t2 = (sharedVar.get("l:"+tid + ":" + word_id) + beta) / (sharedVar.get("l_all:"+tid) + beta * voc_size)
+          val t2 = (sharedVar.getArrayElement("l:"+tid, word_id) + beta) / (sharedVar.get("l_all:"+tid) + beta * voc_size)
           sum += t1 * t2
         }
         loss -= math.log(sum)
@@ -191,7 +179,7 @@ class SVI {
     loss / count
   }
   
-  val evaluateTestLoss = (docBatch:DocBatch, sharedVar : ParameterSet,  localVar: ParameterSet ) => {
+  val evaluateTestLoss = (docBatch:DocBatch, sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
     val voc_size = sharedVar.get("voc_size")
     val num_of_topic = sharedVar.get("num_of_topic").toInt
     val alpha = sharedVar.get("alpha")
@@ -224,7 +212,7 @@ class SVI {
           for(tid <- 0 until num_of_topic){
             phi(tid) = math.exp({
               val t1 = digamma(gamma(tid) + alpha) - digamma(gamma_all + alpha * num_of_topic) 
-              val t2 = digamma(sharedVar.get("l:"+tid + ":" + word_id) + beta) - digamma(sharedVar.get("l_all:"+tid) + beta * voc_size)
+              val t2 = digamma(sharedVar.getArrayElement("l:"+tid, word_id) + beta) - digamma(sharedVar.get("l_all:"+tid) + beta * voc_size)
               t1+t2
             })
             sum += phi(tid)
@@ -257,7 +245,7 @@ class SVI {
         var sum = 0.0
         for(tid <- 0 until num_of_topic){
           val t1 = (gamma(tid) + alpha) / (gamma_all + alpha * num_of_topic) 
-          val t2 = (sharedVar.get("l:"+tid + ":" + word_id) + beta) / (sharedVar.get("l_all:"+tid) + beta * voc_size)
+          val t2 = (sharedVar.getArrayElement("l:"+tid, word_id) + beta) / (sharedVar.get("l_all:"+tid) + beta * voc_size)
           sum += t1 * t2
         }
         loss -= math.log(sum)
@@ -266,7 +254,7 @@ class SVI {
     loss
   }
   
-  val initialize = (docBatch:DocBatch, sharedVar : ParameterSet,  localVar: ParameterSet ) => {
+  val initialize = (docBatch:DocBatch, sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
     val num_of_topic = sharedVar.get("num_of_topic").toInt
     for(entry <- docBatch.docs.filter( doc => doc.forTrain))
     {
@@ -274,13 +262,13 @@ class SVI {
       for(word_entry <- entry.words){
         val word_id = word_entry._1
         val init_topic = Random.nextInt(num_of_topic)
-        sharedVar.update( "l:"+init_topic+":"+word_id, 1.0)
-        sharedVar.update( "l_all:" + init_topic, 1.0 )
+        sharedVar.addArrayElement( "l:" + init_topic, word_id, 1.0)
+        sharedVar.add("l_all:" + init_topic, 1.0)
       }
     }
   }
   
-  val update = ( rnd: Random, docBatch:DocBatch, weight : Double, sharedVar : ParameterSet,  localVar: ParameterSet ) => {
+  val update = (docBatch:DocBatch, weight : Double, sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
     val t = sharedVar.get("t")
     val voc_size = sharedVar.get("voc_size").toInt
     val num_of_topic = sharedVar.get("num_of_topic").toInt
@@ -320,7 +308,7 @@ class SVI {
             for(tid <- 0 until num_of_topic){
               phi(tid) = math.exp({
                 val t1 = digamma(gamma(tid) + alpha) - digamma(gamma_all + alpha * num_of_topic) 
-                val t2 = digamma(sharedVar.get("l:"+tid + ":" + word_id) + beta) - digamma(sharedVar.get("l_all:"+tid) + beta * voc_size)
+                val t2 = digamma(sharedVar.getArrayElement("l:"+tid, word_id) + beta) - digamma(sharedVar.get("l_all:"+tid) + beta * voc_size)
                 t1+t2
               })
               sum += phi(tid)
@@ -354,7 +342,7 @@ class SVI {
           for(tid <- 0 until num_of_topic){
             phi(tid) = math.exp({
               val t1 = digamma(gamma(tid) + alpha) - digamma(gamma_all + alpha * num_of_topic) 
-              val t2 = digamma(sharedVar.get("l:"+tid + ":" + word_id) + beta) - digamma(sharedVar.get("l_all:"+tid) + beta * voc_size)
+              val t2 = digamma(sharedVar.getArrayElement("l:"+tid, word_id) + beta) - digamma(sharedVar.get("l_all:"+tid) + beta * voc_size)
               t1+t2
             })
             sum += phi(tid)
@@ -367,20 +355,23 @@ class SVI {
     }
     
     // update lambda as shared variable
-    val nos = 1
-    val stepsize = math.min(1.0, nos * math.pow(64.0 + t, - 0.7))
-    
-    for(tid <- 0 until num_of_topic){
-      var lambda_all_delta = 0.0
-      for(word_id <- 1 to voc_size){
-        val old_lambda = sharedVar.get("l:"+tid+":"+word_id)
-        val new_lambda = lambda(tid).applyOrElse(word_id, (x:Any)=>0.0)
-        sharedVar.update("l:"+tid+":"+word_id, stepsize * (new_lambda - old_lambda))
-        lambda_all_delta += stepsize * (new_lambda - old_lambda)
+    if(num_of_train_doc > 0)
+    {
+      val nos = 1
+      val stepsize = math.min(1.0, nos * math.pow(1.0 + t, - 0.7))
+      
+      for(tid <- 0 until num_of_topic){
+        sharedVar.multiplyArray("l:"+tid, 1 - stepsize)
+        sharedVar.multiply("l_all:"+tid, 1 - stepsize)
+        var lambda_all_delta = 0.0
+        for(word_id <- lambda(tid).keySet){
+          val new_lambda = lambda(tid)(word_id)
+          sharedVar.addArrayElement("l:"+tid, word_id, stepsize * new_lambda)
+          lambda_all_delta += stepsize * new_lambda
+        }
+        sharedVar.add("l_all:"+tid, lambda_all_delta)
       }
-      val old_lambda_all = sharedVar.get("l_all:"+tid)
-      sharedVar.update("l_all:"+tid, lambda_all_delta)
+      sharedVar.add("t", nos)
     }
-    sharedVar.update("t", nos)
   }
 }

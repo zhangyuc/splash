@@ -10,50 +10,38 @@ import scala.reflect.ClassTag
 class Record[U: ClassTag] extends Serializable{
   var line : U = _
   var variable : Array[(String, Double)] = null
-}
-
-class Block[U: ClassTag] extends Serializable{
-  var id = 0
-  var recordArray : Array[Record[U]] = null
+  var delayedDelta : Array[((String,Int), Double)] = null
 }
 
 class WorkSet[U: ClassTag] extends Serializable{
   var id = 0
-  var sharedVar = new ParameterSet
+  var groupID = 0
+  var sharedVar = new SharedVariableSet
   var prop : Proposal = null
-  var blockArray : Array[Block[U]] = null
+  var recordArray : Array[Record[U]] = null
   var length : Long = 0
-  var iterator = (0,0)
+  var iterator = 0
   var seed = new Random
   
   def nextRecord() = {
-    val record = blockArray(iterator._1).recordArray(iterator._2)
-    if(iterator._2 < blockArray(iterator._1).recordArray.length - 1){
-      iterator = (iterator._1, iterator._2 +1 )
-    }
-    else{
-      iterator = ((iterator._1+1) % blockArray.length, 0)
-      while(blockArray(iterator._1).recordArray.length == 0){
-        iterator = ((iterator._1+1) % blockArray.length, 0)
-      }
-    }
+    val record = recordArray(iterator)
+    iterator = (iterator + 1) % recordArray.length
     record
   }
   
-  def getRecord( index : (Int,Int) ) = { 
-    blockArray(index._1).recordArray(index._2)
+  def getRecord( index : Int ) = { 
+    recordArray(index)
   }
   
   def getRandomRecordIndex() = {
-    val block = blockArray(seed.nextInt(blockArray.length))
-    (block.id, seed.nextInt(block.recordArray.length))
+    seed.nextInt(recordArray.length)
   }
   
   def createIteratorCheckpoint() = {
     iterator
   }
   
-  def restoreIteratorCheckpoint(iteratorCheckpoint: (Int,Int)){
+  def restoreIteratorCheckpoint(iteratorCheckpoint: Int){
     iterator = iteratorCheckpoint
   }
   

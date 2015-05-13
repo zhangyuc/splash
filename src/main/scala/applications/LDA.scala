@@ -8,17 +8,15 @@ class LDA {
   
   val train = (vocfile:String, docfile:String) => {
     val spc = new StreamProcessContext
-    spc.threadNum = 64
-    spc.adaptiveWeightFoldNum = 1
-    spc.weight = 1
+    spc.threadNum = 1
     spc.warmStart = false
     
-    val num_of_pass = 100
+    val num_of_pass = 1000
     val num_of_partition = 64
-    val num_of_topic = 100
+    val num_of_topic = 20
     val alpha = 50.0 / num_of_topic
     val beta = 0.01
-    val conf = new SparkConf().setAppName("LDA-Gibbs Application").set("spark.driver.maxResultSize", "3G").set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+    val conf = new SparkConf().setAppName("LDA-Gibbs Application").set("spark.driver.maxResultSize", "6G")
     val sc = new SparkContext(conf)
     
     // read data and repartition
@@ -58,7 +56,7 @@ class LDA {
     println("found " + trainFreq + " tokens for training and " + testFreq + " tokens for testing.")
     
     // manager start processing data
-    val preprocess = (sharedVar:ParameterSet) => {
+    val preprocess = (sharedVar: SharedVariableSet) => {
       sharedVar.set("voc_size", voc_size)
       sharedVar.set("num_of_topic", num_of_topic)
       sharedVar.set("alpha",alpha)
@@ -74,9 +72,9 @@ class LDA {
 
     // take several passes over the dataset
     for(i <- 0 until num_of_pass){  
-      paraRdd.streamProcess(spc)
+      paraRdd.run(spc)
       val loss = math.exp( paraRdd.map(evaluateTestLoss).reduce( (a,b) => a+b ) / testFreq )
-      println("%5.3f\t%5.5f\t%f".format(paraRdd.totalTimeEllapsed, loss, paraRdd.proposedWeight))
+      println("%5.3f\t%5.5f\t%f".format(paraRdd.totalTimeEllapsed, loss, paraRdd.proposedGroupNum))
     }
     
     // view topics and their top words
@@ -102,7 +100,7 @@ class LDA {
     }
   }
   
-  val evaluateTrainLoss = (entry:(Int,(Int,Boolean)), sharedVar : ParameterSet,  localVar: ParameterSet ) => {
+  val evaluateTrainLoss = (entry:(Int,(Int,Boolean)), sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
     if(entry._2._2 == true)
     {
       val voc_size = sharedVar.get("voc_size")
@@ -128,7 +126,7 @@ class LDA {
     }
   }
   
-  val evaluateTestLoss = (entry:(Int,(Int,Boolean)), sharedVar : ParameterSet,  localVar: ParameterSet ) => {
+  val evaluateTestLoss = (entry:(Int,(Int,Boolean)), sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
     if(entry._2._2 == false)
     {
       val voc_size = sharedVar.get("voc_size")
@@ -154,25 +152,29 @@ class LDA {
     }
   }
   
-  val initialize = (entry:(Int,(Int,Boolean)), sharedVar : ParameterSet,  localVar: ParameterSet ) => {
+  val initialize = (entry:(Int,(Int,Boolean)), sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
     if(entry._2._2 == true)
     {
       val num_of_topic = sharedVar.get("num_of_topic").toInt
       val doc_id = entry._1
       val word_id = entry._2._1
-      val word_freq = 1.0
       
       val init_topic = Random.nextInt(num_of_topic)
-      sharedVar.update( "w:"+init_topic+":"+word_id, word_freq)
-      sharedVar.update( "wa:" + init_topic, word_freq)
-      sharedVar.update("d:"+init_topic+":"+doc_id, word_freq)
-      sharedVar.update("da:" + doc_id, word_freq )
-      localVar.set("T", init_topic + 1 )
+      sharedVar.add( "w:"+init_topic+":"+word_id, 1)
+      sharedVar.add( "wa:" + init_topic, 1)
+      sharedVar.add( "d:"+init_topic+":"+doc_id, 1)
+      sharedVar.add( "da:" + doc_id, 1 )
+      
+      // delayed update
+      sharedVar.delayedAdd( "w:"+init_topic+":"+word_id, -1)
+      sharedVar.delayedAdd( "wa:" + init_topic, -1)
+      sharedVar.delayedAdd( "d:"+init_topic+":"+doc_id, -1)
+      sharedVar.delayedAdd( "da:" + doc_id, -1)
     }
   }
   
   
-  val update = ( rnd: Random, entry:(Int,(Int,Boolean)), weight : Double, sharedVar : ParameterSet,  localVar: ParameterSet ) => {
+  val update = (entry:(Int,(Int,Boolean)), weight : Double, sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
     if(entry._2._2 == true)
     {
       val voc_size = sharedVar.get("voc_size")
@@ -181,14 +183,6 @@ class LDA {
       val beta = sharedVar.get("beta")
       val doc_id = entry._1
       val word_id = entry._2._1
-      
-      val old_topic = localVar.get("T").toInt - 1
-      if(old_topic >= 0){
-        sharedVar.updateWithUnitWeight( "w:"+old_topic+":"+word_id, - 1)
-        sharedVar.updateWithUnitWeight( "wa:" + old_topic, - 1)
-        sharedVar.updateWithUnitWeight( "d:"+old_topic+":"+doc_id, - 1)
-        sharedVar.updateWithUnitWeight( "da:" + doc_id, - 1)
-      }
       
       // calculate the probability that this word belongs to some topic
       val prob = new Array[Double](num_of_topic)
@@ -205,7 +199,7 @@ class LDA {
       }
       
       // sample the new topic for this word
-      val rand = rnd.nextDouble()
+      val rand = Random.nextDouble()
       var new_topic = 0
       var accu_prob = prob(0)
       while( rand >= accu_prob){
@@ -214,13 +208,16 @@ class LDA {
       }
       
       // update shared variables
-      sharedVar.update( "w:"+new_topic+":"+word_id, weight)
-      sharedVar.update( "wa:" + new_topic, weight)
-      sharedVar.update( "d:"+new_topic+":"+doc_id, weight)
-      sharedVar.update( "da:" + doc_id, weight)
+      sharedVar.add( "w:"+new_topic+":"+word_id, weight)
+      sharedVar.add( "wa:" + new_topic, weight)
+      sharedVar.add( "d:"+new_topic+":"+doc_id, weight)
+      sharedVar.add( "da:" + doc_id, weight)
       
-      // update local variable
-      localVar.set("T", new_topic + 1 )
+      // delayed update
+      sharedVar.delayedAdd( "w:"+new_topic+":"+word_id, -weight)
+      sharedVar.delayedAdd( "wa:" + new_topic, -weight)
+      sharedVar.delayedAdd( "d:"+new_topic+":"+doc_id, -weight)
+      sharedVar.delayedAdd( "da:" + doc_id, -weight)
     }
   }
 }

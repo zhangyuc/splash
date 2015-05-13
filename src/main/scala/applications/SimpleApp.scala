@@ -18,17 +18,23 @@ object SimpleApp {
       (new GD).train(root_path + "covtype.txt") 
     }
     if(model.equals("LDA-Gibbs")){
-      (new LDA).train(root_path + "vocab.nips.txt", root_path + "docword.nips.txt")
+      (new LDA).train(root_path + "vocab.nytimes.txt", root_path + "docword.nytimes.txt")
     }
     if(model.equals("LDA-SVI")){
-      (new SVI).train(root_path + "vocab.enron.txt", root_path + "docword.enron.txt")
+      (new SVI).train(root_path + "vocab.nips.txt", root_path + "docword.nips.txt")
+    }
+    if(model.equals("LDA-VI")){
+      (new VI).train(root_path + "vocab.nips.txt", root_path + "docword.nips.txt")
     }
     if(model.equals("BPR")){
       (new BPR).train(root_path + "netflix.txt") 
     }
+    if(model.equals("ALM")){
+      (new ALM).train(root_path + "netflix.txt") 
+    }
   }
   
-  val print_values = (sharedVar : ParameterSet ) => {
+  val print_values = (sharedVar : SharedVariableSet ) => {
     println("========== Shared Variables ==========")
     for( kv_pair <- sharedVar.variable ){
       println( kv_pair._1 + "=" + kv_pair._2 )

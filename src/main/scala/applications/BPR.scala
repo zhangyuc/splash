@@ -10,7 +10,6 @@ import splash._
 class BPR {
   def train(filename:String) {
     val spc = new StreamProcessContext
-    spc.adaptiveWeightFoldNum = 1
     spc.threadNum = 64
     spc.warmStart = false
     
@@ -39,13 +38,23 @@ class BPR {
     println("Bayesian Personalized Ranking")
     println("found " + num_of_item + " items.")
     println("found " + (n - testFreq) + " tokens for training and " + testFreq + " tokens for testing.")
-
     
-    val preprocess = (sharedVar:ParameterSet ) => {
+    val preprocess = (sharedVar: SharedVariableSet) => {
       sharedVar.set("num_of_item",num_of_item)
       sharedVar.set("dimension", dimension)
       sharedVar.set("lambda", lambda)
       sharedVar.set("num_of_partition", num_of_partition)
+      
+      val rnd = new Random
+      for(item_id <- 1 until num_of_item + 1)
+      {
+        val vi = new Array[Double](dimension)
+        for(i <- 0 until dimension){
+          vi(i) = rnd.nextGaussian() * 0.1
+        }
+        sharedVar.declareArray("I:" + item_id, dimension)
+        sharedVar.addArray("I:" + item_id, vi)
+      }
     }
     
     // take several passes over the dataset
@@ -54,47 +63,26 @@ class BPR {
     paraRdd.evaluate_func = this.evaluateTrainLoss
     
     paraRdd.foreachSharedVariable(preprocess)
-    paraRdd.foreachSharedVariable(initialize)
     paraRdd.syncSharedVariable()
     println("initialization complete")
     
     for( i <- 0 until num_of_pass ){
-      paraRdd.streamProcess(spc)
+      paraRdd.run(spc)
       val loss = paraRdd.map(evaluateTestLoss).reduce( (a,b) => a+b ) / testFreq
-      println("%5.3f\t%5.8f\t%d".format(paraRdd.totalTimeEllapsed, 1-loss, paraRdd.proposedWeight.toInt))
+      println("%5.3f\t%5.8f\t%d".format(paraRdd.totalTimeEllapsed, 1-loss, paraRdd.proposedGroupNum.toInt))
     }
   }
   
-  val initialize = (sharedVar : ParameterSet) => {
-    val dim = sharedVar.get("dimension").toInt
-    val nop = sharedVar.get("num_of_partition")
-    val num_of_item = sharedVar.get("num_of_item").toInt
-    val rnd = new Random
-    
-    for(item_id <- 1 until num_of_item + 1)
-    {
-      for(i <- 0 until dim){
-        sharedVar.update("I:" + item_id + ":" + i, rnd.nextGaussian() * 0.1, UpdateType.Push)
-      }
-    }
-  }
-  
-  val evaluateTrainLoss = (entry: (Int, (Int, Boolean)), sharedVar : ParameterSet,  localVar: ParameterSet ) => {
+  val evaluateTrainLoss = (entry: (Int, (Int, Boolean)), sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
     if(entry._2._2 == true){
       val dim = sharedVar.get("dimension").toInt
       val num_of_item = sharedVar.get("num_of_item").toInt
       val user_id = entry._1
       val item_id = entry._2._1
       val alt_item_id = Random.nextInt(num_of_item) + 1
-      val vu = new Array[Double](dim)
-      val vi = new Array[Double](dim)
-      val vj = new Array[Double](dim)
-      
-      for(i <- 0 until dim){
-        vu(i) = sharedVar.get("U:" + user_id + ":" + i)
-        vi(i) = sharedVar.get("I:" + item_id + ":" + i)
-        vj(i) = sharedVar.get("I:" + alt_item_id + ":" + i)
-      }
+      val vu = sharedVar.getArray("U:" + user_id)
+      val vi = sharedVar.getArray("I:" + item_id)
+      val vj = sharedVar.getArray("I:" + alt_item_id)
       
       // compute inner product
       var inner_product = 0.0
@@ -114,21 +102,19 @@ class BPR {
     }
   }
   
-  val evaluateTestLoss = (entry: (Int, (Int, Boolean)), sharedVar : ParameterSet,  localVar: ParameterSet ) => {
+  val evaluateTestLoss = (entry: (Int, (Int, Boolean)), sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
     if(entry._2._2 == false){
       val dim = sharedVar.get("dimension").toInt
       val num_of_item = sharedVar.get("num_of_item").toInt
       val user_id = entry._1
       val item_id = entry._2._1
       val alt_item_id = Random.nextInt(num_of_item) + 1
-      val vu = new Array[Double](dim)
-      val vi = new Array[Double](dim)
-      val vj = new Array[Double](dim)
-      
-      for(i <- 0 until dim){
-        vu(i) = sharedVar.get("U:" + user_id + ":" + i)
-        vi(i) = sharedVar.get("I:" + item_id + ":" + i)
-        vj(i) = sharedVar.get("I:" + alt_item_id + ":" + i)
+      var vu = sharedVar.getArray("U:" + user_id)
+      val vi = sharedVar.getArray("I:" + item_id)
+      val vj = sharedVar.getArray("I:" + alt_item_id)
+      if(vu == null){
+        sharedVar.declareArray("U:" + user_id, dim)
+        vu = new Array[Double](dim)
       }
       
       // compute inner product
@@ -152,7 +138,7 @@ class BPR {
     }
   }
   
-  val update = ( rnd: Random, entry: (Int, (Int, Boolean)), weight: Double, sharedVar : ParameterSet,  localVar: ParameterSet ) => {
+  val update = (entry: (Int, (Int, Boolean)), weight: Double, sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
     if(entry._2._2 == true){
       var total_weight = weight.toInt
       var current_weight = 1
@@ -161,24 +147,21 @@ class BPR {
       val num_of_item = sharedVar.get("num_of_item").toInt
       val user_id = entry._1
       val item_id = entry._2._1
-      val alt_item_id = rnd.nextInt(num_of_item) + 1
-      val vu = new Array[Double](dim)
-      val vi = new Array[Double](dim)
-      val vj = new Array[Double](dim)
-      val vu_old = new Array[Double](dim)
-      val vi_old = new Array[Double](dim)
-      val vj_old = new Array[Double](dim)
-      for(i <- 0 until dim){
-        vu(i) = sharedVar.get("U:" + user_id + ":" + i)
-        vi(i) = sharedVar.get("I:" + item_id + ":" + i)
-        vj(i) = sharedVar.get("I:" + alt_item_id + ":" + i)
-        vu_old(i) = vu(i)
-        vi_old(i) = vi(i)
-        vj_old(i) = vj(i)
+      val alt_item_id = Random.nextInt(num_of_item) + 1
+      var vu = sharedVar.getArray("U:" + user_id)
+      val vi = sharedVar.getArray("I:" + item_id)
+      val vj = sharedVar.getArray("I:" + alt_item_id)
+      if(vu == null){
+        sharedVar.declareArray("U:" + user_id, dim)
+        vu = new Array[Double](dim)
       }
       
+      val vu_old = vu.clone()
+      val vi_old = vi.clone()
+      val vj_old = vj.clone()
+      
       while(total_weight > 0){
-        val alpha = 0.01 * current_weight
+        val alpha = 0.02 * current_weight
         
         // compute inner product
         var inner_product = 0.0
@@ -203,33 +186,15 @@ class BPR {
           current_weight = total_weight
         }
       }
-      
       for(i <- 0 until dim){
-        sharedVar.update("U:" + user_id + ":" + i, vu(i) - vu_old(i), UpdateType.Keep )
-        sharedVar.update("I:" + item_id + ":" + i, vi(i) - vi_old(i), UpdateType.Push )
-        sharedVar.update("I:" + alt_item_id + ":" + i, vj(i) - vj_old(i), UpdateType.Push )
+        vu(i) -= vu_old(i)
+        vi(i) -= vi_old(i)
+        vj(i) -= vj_old(i)
       }
+      
+      sharedVar.addArray("U:" + user_id, vu)
+      sharedVar.addArray("I:" + item_id, vi)
+      sharedVar.addArray("I:" + alt_item_id, vj)
     }
   }
 }
-
-// data generator
-/*object BPRDataGenerator{
-  def main(args: Array[String]) {
-    val files = new File("/home/yuczhang/Downloads/download/training_set").listFiles
-    for(file <- files){
-      var count = 0
-      var movie_id = 0
-      for(line <- Source.fromFile(file).getLines()){
-        if(count == 0){
-          movie_id = line.split(":")(0).toInt
-        }
-        else{
-          val user_id = line.split(",")(0).toInt
-          println(user_id + " " + movie_id)
-        }
-        count += 1
-      }
-    }
-  }
-}*/
