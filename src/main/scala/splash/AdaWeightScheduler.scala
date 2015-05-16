@@ -44,7 +44,7 @@ class AdaWeightScheduler {
       // construct rescaling factor set
       val weightSet = new ListBuffer[Int]
       var weight = 1
-      while(weight < threadNum){
+      while(weight == 1 || weight <= threadNum / 4){
         weightSet.append(weight)
         weight *= 4
       }
@@ -72,27 +72,20 @@ class AdaWeightScheduler {
           // define evaluation function
           val evaluate = () => {
             var loss = 0.0
-            for(index <- testDataIndex){
-              val record = workset.getRecord(index)
-              if(eval_func != null){
+            if(eval_func != null){
+              for(index <- testDataIndex){
+                val record = workset.getRecord(index)
                 loss += eval_func(record.line, sharedVar, new LocalVariableSet(record.variable))
               }
-              else{
-                sharedVar.delta.clear()
-                sharedVar.deltaArray.clear()
+            }
+            else{
+              sharedVar.testLoss = 0.0
+              for(index <- testDataIndex){
+                val record = workset.getRecord(index)
                 func(record.line, 1.0, sharedVar, new LocalVariableSet(record.variable))
-                var localLoss = 0.0
-                for(pair <- sharedVar.delta){
-                  localLoss += math.pow(pair._2.delta + pair._2.unweightedDelta, 2)
-                }
-                sharedVar.refreshAllDeltaArrayElementPrefactor()
-                for(pair <- sharedVar.deltaArray){
-                  for(dv <- pair._2.array){
-                    localLoss += math.pow(dv.delta + dv.unweightedDelta, 2)
-                  }
-                }
-                loss += localLoss
               }
+              loss = sharedVar.testLoss
+              sharedVar.testLoss = -1.0
             }
             loss
           }

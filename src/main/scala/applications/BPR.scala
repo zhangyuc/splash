@@ -15,7 +15,7 @@ class BPR {
     
     val num_of_partition = 64
     val num_of_pass = 1000
-    val dimension = 10
+    val dimension = 20
     val lambda = 0.01
     
     val conf = new SparkConf().setAppName("BPR Application")

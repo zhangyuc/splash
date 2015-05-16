@@ -12,7 +12,7 @@ object SimpleApp {
     val root_path = prop.getProperty("root_path")
     val model = prop.getProperty("model")
     if(model.equals("SGD")){ 
-      (new SGD).train(root_path + "covtype.txt")
+      (new SGD).train(root_path + "rcv1.txt")
     }
     if(model.equals("GD")){
       (new GD).train(root_path + "covtype.txt") 
@@ -28,6 +28,9 @@ object SimpleApp {
     }
     if(model.equals("BPR")){
       (new BPR).train(root_path + "netflix.txt") 
+    }
+    if(model.equals("AdaBPR")){
+      (new AdaBPR).train(root_path + "netflix.txt") 
     }
     if(model.equals("ALM")){
       (new ALM).train(root_path + "netflix.txt") 

@@ -26,6 +26,8 @@ class SharedVariableSet extends Serializable{
   var delayedAddShrinkFactor : Double = 1.0
   var delayedAddDefinedInEarlierIteration : Boolean = true
   
+  var testLoss = -1.0
+  
   // set operations are not recommended
   def set(key:String, value:Double) {
     variable.put(key, value)
@@ -109,47 +111,64 @@ class SharedVariableSet extends Serializable{
   }
   
   def add(key:String, value:Double) {
-    if(delta.contains(key)){
-      val dv = delta(key)
-      dv.delta += value
+    if(testLoss < 0){
+      if(delta.contains(key)){
+        val dv = delta(key)
+        dv.delta += value
+      }
+      else{
+        val dv = new DeltaValue
+        dv.delta = value
+        delta.put(key, dv)
+      }
     }
     else{
-      val dv = new DeltaValue
-      dv.delta = value
-      delta.put(key, dv)
+      testLoss += value * value
     }
   }
   
   def addArray(key:String, value:Array[Double]){
-    if(deltaArray.contains(key)){
-      val deltaValueObject =deltaArray(key)
-      val deltaValueArray = deltaValueObject.array
-      for(i <- 0 until deltaValueArray.length){
-        val dv = deltaValueArray(i)
-        refreshDeltaArrayElementPrefactor(dv, deltaValueObject.prefactor)
-        dv.delta += value(i)
+    if(testLoss < 0){
+      if(deltaArray.contains(key)){
+        val deltaValueObject =deltaArray(key)
+        val deltaValueArray = deltaValueObject.array
+        for(i <- 0 until deltaValueArray.length){
+          val dv = deltaValueArray(i)
+          refreshDeltaArrayElementPrefactor(dv, deltaValueObject.prefactor)
+          dv.delta += value(i)
+        }
+      }
+      else{
+        declareArray(key, variableArray(key).length)
+        val deltaValueArray = deltaArray(key).array
+        for(i <- 0 until deltaValueArray.length){
+          deltaValueArray(i).delta = value(i)
+        }
       }
     }
     else{
-      declareArray(key, variableArray(key).length)
-      val deltaValueArray = deltaArray(key).array
-      for(i <- 0 until deltaValueArray.length){
-        deltaValueArray(i).delta = value(i)
+      for(i <- 0 until value.length){
+        testLoss += value(i) * value(i)
       }
     }
   }
   
   def addArrayElement(key:String, index: Int, value:Double){
-    if(deltaArray.contains(key)){
-      val deltaValueObject = deltaArray(key)
-      val dv = deltaValueObject.array(index)
-      refreshDeltaArrayElementPrefactor(dv, deltaValueObject.prefactor)
-      dv.delta += value
+    if(testLoss < 0){
+      if(deltaArray.contains(key)){
+        val deltaValueObject = deltaArray(key)
+        val dv = deltaValueObject.array(index)
+        refreshDeltaArrayElementPrefactor(dv, deltaValueObject.prefactor)
+        dv.delta += value
+      }
+      else{
+        declareArray(key, variableArray(key).length)
+        val deltaValueArray = deltaArray(key).array
+        deltaValueArray(index).delta = value
+      }
     }
     else{
-      declareArray(key, variableArray(key).length)
-      val deltaValueArray = deltaArray(key).array
-      deltaValueArray(index).delta = value
+      testLoss += value * value
     }
   }
   

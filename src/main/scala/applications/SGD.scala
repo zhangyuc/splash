@@ -26,6 +26,8 @@ class SGD {
       spc.dataPerIteraiton = 1
     }
     
+    spc.groupNum = 64
+    
     val stepsize = candidate_stepsize
     val num_of_partition = 64
     val num_of_pass = 1000
@@ -148,11 +150,11 @@ class SGD {
     // stepsize 100 for rcv1 and mnist38, 20 for covtype
     for(i <- 0 until x_key.length)
     {
-      val delta = stepsize * weight / math.sqrt(t + 1) * y / (1.0 + math.exp(y*y_predict)) * x_value(i)
+      val delta = stepsize * 1 / math.sqrt(t + 1) * y / (1.0 + math.exp(y*y_predict)) * x_value(i)
       sharedVar.addArrayElement("w", x_key(i), delta)
       sharedVar.addArrayElement("ws", x_key(i), delta * (total_c - c) / total_c)
     }
-    sharedVar.add("t", weight)
+    sharedVar.add("t", 1)
     sharedVar.add("count", 1)
   }
 }

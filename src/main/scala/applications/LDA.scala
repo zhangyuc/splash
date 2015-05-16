@@ -39,6 +39,7 @@ class LDA {
     val freq = data.count()
     val testFreq = data.filter( a => (a._2._2 == false) ).count()
     val trainFreq = freq - testFreq
+    val num_of_doc = data.map( x => x._1 ).reduce( (a,b) => math.max(a, b) )
     
     // read vocabulary
     val vocabulary = new HashMap[Int, String]
@@ -53,14 +54,21 @@ class LDA {
     // print basic information
     println("Latent Dirichlet Allocation")
     println("vocabulary size = " + voc_size)
+    println("numer of document = " + num_of_doc)
     println("found " + trainFreq + " tokens for training and " + testFreq + " tokens for testing.")
     
     // manager start processing data
     val preprocess = (sharedVar: SharedVariableSet) => {
       sharedVar.set("voc_size", voc_size)
       sharedVar.set("num_of_topic", num_of_topic)
+      sharedVar.set("num_of_doc", num_of_doc)
       sharedVar.set("alpha",alpha)
       sharedVar.set("beta",beta)
+      
+      for(tid <- 0 until num_of_topic){
+        sharedVar.declareArray("w:"+tid, voc_size+1)
+        sharedVar.declareArray("d:"+tid, num_of_doc+1)
+      }
     }
     val paraRdd = new ParametrizedRDD(data, true)
     paraRdd.process_func = this.update
@@ -114,9 +122,9 @@ class LDA {
       val td_all = sharedVar.get("da:" + doc_id)
       var sum_prob = 0.0
       for(tid <- 0 until num_of_topic){
-        val tw = sharedVar.get("w:"+tid+":"+word_id)
+        val tw = sharedVar.getArrayElement("w:"+tid, word_id)
         val tw_all = sharedVar.get("wa:" + tid)
-        val td = sharedVar.get("d:"+tid+":"+doc_id)
+        val td = sharedVar.getArrayElement("d:"+tid, doc_id)
         sum_prob += (td + alpha) / (td_all + alpha * num_of_topic) * (tw + beta) / (tw_all + beta * voc_size)
       }
       - math.log(sum_prob)
@@ -140,9 +148,9 @@ class LDA {
       val td_all = sharedVar.get("da:" + doc_id)
       var sum_prob = 0.0
       for(tid <- 0 until num_of_topic){
-        val tw = sharedVar.get("w:"+tid+":"+word_id)
+        val tw = sharedVar.getArrayElement("w:"+tid, word_id)
         val tw_all = sharedVar.get("wa:" + tid)
-        val td = sharedVar.get("d:"+tid+":"+doc_id)
+        val td = sharedVar.getArrayElement("d:"+tid, doc_id)
         sum_prob += (td + alpha) / (td_all + alpha * num_of_topic) * (tw + beta) / (tw_all + beta * voc_size)
       }
       - math.log(sum_prob)
@@ -160,15 +168,15 @@ class LDA {
       val word_id = entry._2._1
       
       val init_topic = Random.nextInt(num_of_topic)
-      sharedVar.add( "w:"+init_topic+":"+word_id, 1)
+      sharedVar.addArrayElement( "w:"+init_topic, word_id, 1)
       sharedVar.add( "wa:" + init_topic, 1)
-      sharedVar.add( "d:"+init_topic+":"+doc_id, 1)
+      sharedVar.addArrayElement( "d:"+init_topic, doc_id, 1)
       sharedVar.add( "da:" + doc_id, 1 )
       
       // delayed update
-      sharedVar.delayedAdd( "w:"+init_topic+":"+word_id, -1)
+      sharedVar.delayedAddArrayElement( "w:"+init_topic, word_id, -1)
       sharedVar.delayedAdd( "wa:" + init_topic, -1)
-      sharedVar.delayedAdd( "d:"+init_topic+":"+doc_id, -1)
+      sharedVar.delayedAddArrayElement( "d:"+init_topic, doc_id, -1)
       sharedVar.delayedAdd( "da:" + doc_id, -1)
     }
   }
@@ -188,9 +196,9 @@ class LDA {
       val prob = new Array[Double](num_of_topic)
       var sum_prob = 0.0
       for(tid <- 0 until num_of_topic){
-        val tw = sharedVar.get("w:"+tid+":"+word_id)
+        val tw = sharedVar.getArrayElement("w:"+tid, word_id)
         val tw_all = sharedVar.get("wa:" + tid)
-        val td = sharedVar.get("d:"+tid+":"+doc_id)
+        val td = sharedVar.getArrayElement("d:"+tid, doc_id)
         prob(tid) = (td + alpha) * (tw + beta) / (tw_all + beta * voc_size)
         sum_prob += prob(tid)
       }
@@ -208,15 +216,15 @@ class LDA {
       }
       
       // update shared variables
-      sharedVar.add( "w:"+new_topic+":"+word_id, weight)
+      sharedVar.addArrayElement( "w:"+new_topic, word_id, weight)
       sharedVar.add( "wa:" + new_topic, weight)
-      sharedVar.add( "d:"+new_topic+":"+doc_id, weight)
+      sharedVar.addArrayElement( "d:"+new_topic, doc_id, weight)
       sharedVar.add( "da:" + doc_id, weight)
       
       // delayed update
-      sharedVar.delayedAdd( "w:"+new_topic+":"+word_id, -weight)
+      sharedVar.delayedAddArrayElement( "w:"+new_topic, word_id, -weight)
       sharedVar.delayedAdd( "wa:" + new_topic, -weight)
-      sharedVar.delayedAdd( "d:"+new_topic+":"+doc_id, -weight)
+      sharedVar.delayedAddArrayElement( "d:"+new_topic, doc_id, -weight)
       sharedVar.delayedAdd( "da:" + doc_id, -weight)
     }
   }

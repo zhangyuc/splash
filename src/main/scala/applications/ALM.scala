@@ -56,6 +56,9 @@ class ALM {
     // initialize item vector
     for(iid <- item_ids){
       val array = new Array[Double](dimension)
+      for(i <- 0 until dimension){
+        array(i) = rnd.nextGaussian() * 0.1
+      }
       item_vec.put(iid, array)
     }
     
@@ -175,7 +178,6 @@ class ALM {
           for(i <- 0 until dim){
             inner_product += vu(i) * (vi(i) - vj(i))
           }
-          
           if(inner_product > 0){
             0.0
           }
