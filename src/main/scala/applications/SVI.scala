@@ -40,15 +40,15 @@ class SVI {
     
     if(spc.threadNum == 64){
       if(vocfile.endsWith("vocab.nips.txt")){
-        spc.dataPerIteraiton = 0.5
-        spc.groupNum = 1
+        spc.numOfPassOverLocalData = 0.5
+        init_batchsize = 1.0
       }
       if(vocfile.endsWith("vocab.enron.txt")){
-        spc.dataPerIteraiton = 0.2
+        spc.numOfPassOverLocalData = 0.2
         init_batchsize = 1.0
       }
       if(vocfile.endsWith("vocab.nytimes.txt")){
-        spc.dataPerIteraiton = 0.2
+        spc.numOfPassOverLocalData = 0.2
         init_batchsize = 0.5
       }
     }
@@ -144,7 +144,7 @@ class SVI {
     paraRdd.syncSharedVariable()
 
     // take several passes over the dataset
-    if(init_batchsize > 0) paraRdd.run(spc.set("num.of.thread", 1).set("data.per.iteration", init_batchsize))
+    if(init_batchsize > 0) paraRdd.run(spc.set("num.of.thread", 1).set("num.of.pass.over.local.data", init_batchsize))
     for(i <- 0 until num_of_pass){
       paraRdd.run(spc)
       val loss = - paraRdd.map(evaluateTestLoss).reduce( (a,b) => a+b ) / testFreq

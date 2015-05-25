@@ -13,7 +13,6 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
   var worksets : rdd.RDD[WorkSet[T]] = _
   var numOfWorkset = 0
   var globalRnd : Random = null
-  var streamPartitioner : Partitioner = null
   
   var length : Long = 0
   var totalTimeEllapsed = 0.0
@@ -21,28 +20,88 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
   
   var process_func :(T, Double, SharedVariableSet, LocalVariableSet) => Any = null
   var evaluate_func : (T, SharedVariableSet, LocalVariableSet) => Double = null
-  var worksetIterator = 0
   
+  var worksetIterator = 0
+  var dataProcessedSinceLastShuffling = 0.0
+  var duplicateFactor = 1
   var iterNum = 0
   
-  def this( initRdd : rdd.RDD[T], preservePartitioning : Boolean = false ){
+  def this(initRdd : rdd.RDD[T], preservePartitioning : Boolean = false){
     this()
+    
     val repartitioned_rdd = {
-      if(preservePartitioning){
-        initRdd
-      }
-      else{
-        initRdd.repartition(initRdd.context.defaultParallelism)
-      }
+      if(preservePartitioning) initRdd
+      else repartitionRDD(initRdd, initRdd.context.defaultParallelism)
     }
+    
+    globalRnd = new Random
     length = repartitioned_rdd.count()
     numOfWorkset = repartitioned_rdd.partitions.length
-    globalRnd = new Random
     worksets = generateWorkSets(repartitioned_rdd)
   }
   
-  def getTotalTimeEllapsed = totalTimeEllapsed
-  def getProposedGroupNum = proposedGroupNum
+  private def repartitionRDD[U: ClassTag](init_rdd : rdd.RDD[U], partition_num : Int = 0) = {
+    val npar = {
+      if(partition_num == 0) init_rdd.partitions.length
+      else partition_num
+    }
+    init_rdd.map( x => (Random.nextInt(npar), x)).partitionBy(new HashPartitioner(npar)).map( x => x._2 )
+  }
+  
+  def duplicateAndReshuffle(duplicateNum : Int) = {
+    if(duplicateNum > 0){
+      duplicateWorkset(this.worksets, duplicateNum)
+      duplicateFactor *= duplicateNum
+      length *= duplicateNum
+    }
+    this
+  }
+  
+  private def duplicateWorkset[U: ClassTag](worksets : rdd.RDD[WorkSet[U]], duplication : Int){
+    val dup = duplication
+    val reshuffled_data = repartitionRDD(worksets.flatMap(workset => {
+      workset.recordArray.iterator
+    }).flatMap(x => {
+      val array = new Array[Record[U]](dup)
+      array(0) = x
+      for(i <- 1 until dup){
+        array(i) = new Record[U]
+        array(i).line = x.line
+      }
+      array.iterator
+    }), numOfWorkset)
+    
+    val tmp = worksets.zipPartitions(reshuffled_data)( (workset_iter, iter) => {
+      val workset = workset_iter.next()
+      workset.recordArray = iter.toArray
+      workset.length = workset.recordArray.length
+      Array(0).iterator
+    }).count()
+  }
+  
+  private def generateWorkSets[U: ClassTag] ( init_rdd:rdd.RDD[U] ) = {
+    val result = init_rdd.mapPartitionsWithIndex( (index, iter) => {
+      val workset = new WorkSet[U]
+      workset.id = index
+      val tmp_array = new ListBuffer[Record[U]]
+      
+      while(iter.hasNext){
+        val line = iter.next()
+        tmp_array.append( {
+          val r = new Record[U]
+          r.line = line
+          r })
+        workset.length += 1
+      }
+      workset.recordArray = tmp_array.toArray
+      Array(workset).iterator
+    }).cache()
+    result
+  }
+  
+  def count() = length
+  def getTotalTimeEllapsed() = totalTimeEllapsed
+  def getProposedGroupNum() = proposedGroupNum
   def partitions = worksets.partitions
   
   def setProcessFunction(func :(T, Double, SharedVariableSet, LocalVariableSet) => Any){
@@ -57,7 +116,6 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     val list = new ListBuffer[U]
     val f = func
     worksets.flatMap( workset => {
-      workset.sharedVar.batchSize = workset.length
       for(record <- workset.recordArray){
         val localVar = new LocalVariableSet(record.variable)
         workset.sharedVar.setDelayedDelta(record.delayedDelta)
@@ -69,10 +127,17 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     })
   }
   
+  def reduce(func : (T, T) => T) = {
+    val f = func
+    worksets.flatMap( workset => {
+      val orignalCopy = workset.recordArray.map(_.line)
+      orignalCopy.iterator
+    }).reduce(f)
+  }
+  
   def foreach(func : (T, SharedVariableSet, LocalVariableSet) => Any) = {
     val f = func
     worksets.foreach( workset => {
-      workset.sharedVar.batchSize = workset.length
       for(record <- workset.recordArray){
         val localVar = new LocalVariableSet(record.variable)
         workset.sharedVar.setDelayedDelta(record.delayedDelta)
@@ -99,6 +164,11 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     }
   }
   
+  def reduceSharedVariable(func : (SharedVariableSet, SharedVariableSet) => SharedVariableSet) = {
+    val f = func
+    worksets.map(_.sharedVar).reduce(f)
+  }
+  
   def foreachSharedVariable( preprocess_func: SharedVariableSet => Any ) {
     val pfunc = preprocess_func
     worksets.foreach( workset => {
@@ -107,14 +177,13 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
   }
   
   def run(spc: StreamProcessContext){
-    refresh()
+    if(iterNum == 0 || dataProcessedSinceLastShuffling >= duplicateFactor){
+      refresh()
+    }
     if(iterNum == 0 && spc.warmStart && spc.threadNum != 1){
-      takePass(globalRnd, worksets, process_func, evaluate_func, spc.set("num.of.thread", "1"))
-      takePass(globalRnd, worksets, process_func, evaluate_func, spc)
+      takePass(globalRnd, worksets, process_func, evaluate_func, spc.set("num.of.thread", 1))
     }
-    else{
-      takePass(globalRnd, worksets, process_func, evaluate_func, spc)
-    }
+    takePass(globalRnd, worksets, process_func, evaluate_func, spc)
     iterNum += 1
   }
   
@@ -139,23 +208,6 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     worksets.unpersist()
   }
   
-  def repartition[U: ClassTag](worksets : rdd.RDD[WorkSet[U]]){
-    val reshuffled_data = worksets.flatMap(workset => {
-      val data_list = new ListBuffer[Record[U]]
-      for(record <- workset.recordArray){
-        data_list.append(record)
-      }
-      data_list.iterator
-    }).repartition(numOfWorkset)
-    
-    val tmp = worksets.zipPartitions(reshuffled_data)((workset_iter, iter) => {
-      val workset = workset_iter.next()
-      workset.recordArray = iter.toArray
-      workset.length = workset.recordArray.length
-      Array(0).iterator
-    }).count()
-  }
-  
   def refresh() {
     val shuffle_seed = globalRnd.nextInt(65536)
     worksets.foreach( workset => {
@@ -171,29 +223,7 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
         workset.recordArray(randi) = tmp
       }
     })
-  }
-  
-  private def generateWorkSets[U: ClassTag] ( single_row_rdd:rdd.RDD[U] ) = {
-    val partitioner = streamPartitioner
-    
-    val result = single_row_rdd.mapPartitionsWithIndex( (index, iter) => {
-      val workset = new WorkSet[U]
-      workset.id = index
-      val tmp_array = new ListBuffer[Record[U]]
-      
-      while(iter.hasNext){
-        val line = iter.next()
-        tmp_array.append( {
-          val r = new Record[U]
-          r.line = line
-          r })
-        workset.length += 1
-      }
-      
-      workset.recordArray = tmp_array.toArray
-      Array(workset).iterator
-    }).cache()
-    result
+    dataProcessedSinceLastShuffling = 0.0
   }
   
   val getShuffledIndex = (rnd : Random, n:Int) => {
@@ -210,11 +240,6 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     array
   }
   
-  val printTime = () => {
-    val fmt = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss")
-    println(fmt.format(new Date))
-  }
-  
   def takePass[U: ClassTag] ( rnd:Random, worksets: rdd.RDD[WorkSet[U]],
     process_func:(U, Double, SharedVariableSet, LocalVariableSet) => Any,
     evaluate_func: (U, SharedVariableSet, LocalVariableSet) => Double, 
@@ -225,15 +250,9 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     val num_of_workset = numOfWorkset
       
     // prepare broadcast
-    val blockIteratorBroadcast = worksetIterator
-    if(spc.threadNum == 1){ 
-      worksetIterator = (worksetIterator + 1) % num_of_workset 
-    }
     val func = process_func
     val eval_func = evaluate_func
     val sc = worksets.context
-    val priorityArray = sc.broadcast(getShuffledIndex(rnd, numOfWorkset))
-    val stepsize = spc.dataPerIteraiton
     val process_rand_seed = rnd.nextInt(65536)
     val iterStartTime = (new Date).getTime
     
@@ -246,22 +265,27 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
         spc.threadNum
       }
     }
-    val weight : Int = aws.getAdaWeight(rnd, worksets, process_func, evaluate_func, spc, priorityArray.value)
+    val activeSet = sc.broadcast({
+      val set = new HashSet[Int]
+      for(i <- 0 until thread){
+        set.add(worksetIterator + i)
+      }
+      set
+    })
+    worksetIterator = (worksetIterator + thread) % num_of_workset
+    val stepsize = spc.numOfPassOverLocalData // ratio of data to be processed in each local dataset
+    val weight : Int = aws.getAdaWeight(rnd, worksets, process_func, evaluate_func, spc, stepsize, activeSet.value)
     this.proposedGroupNum = weight 
     
     // process data in one split, and in parallel
     worksets.foreach(workset => {
       val batchsize = math.ceil(stepsize * workset.length).toInt
-      val threadActive = {
-        if(thread == 1) workset.id == blockIteratorBroadcast
-        else priorityArray.value(workset.id) < thread
-      }
+      val threadActive = activeSet.value.contains(workset.id)
       if( threadActive ) // if the thread is active for this iteration
       {
-        val rnd = new Random(process_rand_seed + workset.id)
         val sharedVar = workset.sharedVar
         sharedVar.clearDelayedDelta()
-        sharedVar.batchSize = batchsize
+        sharedVar.batchSize = batchsize * weight
         sharedVar.delayedAddShrinkFactor = 1.0
         sharedVar.delayedAddDefinedInEarlierIteration = true
         
@@ -279,17 +303,20 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
           record.variable = localVar.toArray()
           record.delayedDelta = sharedVar.exportDelayedDelta()
         }
+        sharedVar.batchSize = 0
         sharedVar.delayedAddShrinkFactor = 1.0
         sharedVar.delayedAddDefinedInEarlierIteration = true
         
         // construct a proposal
         workset.prop = sharedVar.exportProposal(weight)
-        workset.groupID = priorityArray.value(workset.id) % weight
+        workset.groupID = workset.id % weight
       }
       else{
         workset.prop = null
       }
     })
+    
+    this.dataProcessedSinceLastShuffling += thread / num_of_workset.toDouble * duplicateFactor * math.min(1.0, stepsize)
     var timeElapsed = ((new Date).getTime - iterStartTime).toDouble / 1000
     
     // merge proposals

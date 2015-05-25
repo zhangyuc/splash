@@ -5,7 +5,7 @@ class StreamProcessContext {
   var groupNum = 0
   var adaptiveWeightSampleRatio = 0.1
   var warmStart : Boolean = true
-  var dataPerIteraiton = 1.0
+  var numOfPassOverLocalData = 1.0
   
   def set(key:String, value:String) = {
     val spc = new StreamProcessContext
@@ -13,7 +13,7 @@ class StreamProcessContext {
     spc.groupNum = this.groupNum
     spc.adaptiveWeightSampleRatio = this.adaptiveWeightSampleRatio
     spc.warmStart = this.warmStart
-    spc.dataPerIteraiton = this.dataPerIteraiton
+    spc.numOfPassOverLocalData = this.numOfPassOverLocalData
     
     if(key.equals("num.of.thread")){
       spc.threadNum = value.toInt
@@ -21,8 +21,8 @@ class StreamProcessContext {
     if(key.equals("num.of.group")){
       spc.groupNum = value.toInt
     }
-    if(key.equals("data.per.iteration")){
-      spc.dataPerIteraiton = value.toDouble
+    if(key.equals("num.of.pass.over.local.data")){
+      spc.numOfPassOverLocalData = value.toDouble
     }
     if(key.equals("warm.start")){
       spc.warmStart = value.toBoolean
@@ -36,7 +36,7 @@ class StreamProcessContext {
     spc.groupNum = this.groupNum
     spc.adaptiveWeightSampleRatio = this.adaptiveWeightSampleRatio
     spc.warmStart = this.warmStart
-    spc.dataPerIteraiton = this.dataPerIteraiton
+    spc.numOfPassOverLocalData = this.numOfPassOverLocalData
     
     if(key.equals("num.of.thread")){
       spc.threadNum = value.toInt
@@ -44,8 +44,8 @@ class StreamProcessContext {
     if(key.equals("num.of.group")){
       spc.groupNum = value.toInt
     }
-    if(key.equals("data.per.iteration")){
-      spc.dataPerIteraiton = value.toDouble
+    if(key.equals("num.of.pass.over.local.data")){
+      spc.numOfPassOverLocalData = value.toDouble
     }
     spc
   }

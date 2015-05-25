@@ -15,7 +15,8 @@ class AdaWeightScheduler {
     process_func:(U, Double, SharedVariableSet, LocalVariableSet) => Any,
     evaluate_func: (U, SharedVariableSet, LocalVariableSet) => Double = null, 
     spc : StreamProcessContext,
-    parray : Array[Int]) = {
+    arg_stepsize : Double,
+    arg_activeSet : HashSet[Int]) = {
     
     if(spc.threadNum == 1 || spc.groupNum != 0){
       math.max(1, spc.groupNum)
@@ -35,10 +36,14 @@ class AdaWeightScheduler {
           spc.threadNum
         }
       }
-      val adaptiveReweightingSampleRatio = math.min(spc.adaptiveWeightSampleRatio, 1.0 / spc.dataPerIteraiton)
-      val dataPerIteration = spc.dataPerIteraiton
+      
+      // ratio of data to be tested in the processing batch
+      // this ratio cannot be greater than 1.0 / stepsize
+      // i.e. the testing batch is no larger than the local dataset
+      val adaptiveReweightingSampleRatio = math.min(spc.adaptiveWeightSampleRatio, 1.0 / arg_stepsize) 
+      val stepsize = arg_stepsize
       val process_rand_seed = rnd.nextInt(65536)
-      val priorityArray = worksets.context.broadcast(parray)
+      val activeSet = worksets.context.broadcast(arg_activeSet)
      
       
       // construct rescaling factor set
@@ -52,22 +57,24 @@ class AdaWeightScheduler {
       
       // construct loss set
       val lossSet = worksets.map(workset => {
-        val length = workset.length * dataPerIteration
-        val tentativeBatchSize = math.ceil(length * adaptiveReweightingSampleRatio).toInt
+        val totalBatchSize = workset.length * stepsize
+        val tentativeBatchSize = math.ceil(totalBatchSize * adaptiveReweightingSampleRatio).toInt
         val sharedVar = workset.sharedVar
         val lossSet = new HashSet[(Int,Double)]
-        val weight = weightSet( priorityArray.value(workset.id) % weightSet.length )
+        val weight = weightSet( workset.id % weightSet.length )
         
-        if(priorityArray.value(workset.id) < threadNum){
+        if(activeSet.value.contains(workset.id)){
           val rnd = new Random(process_rand_seed + workset.id)
           sharedVar.batchSize = tentativeBatchSize
           
           // construct test set
           val testDataIndex = new Array[Int](tentativeBatchSize)
+          val checkpoint = workset.createIteratorCheckpoint()
           for(i <- 0 until tentativeBatchSize){
             testDataIndex(i) = workset.createIteratorCheckpoint()
             workset.nextRecord()
           }
+          workset.restoreIteratorCheckpoint(checkpoint)
           
           // define evaluation function
           val evaluate = () => {
@@ -108,7 +115,7 @@ class AdaWeightScheduler {
             // process single data point
             val localVar = new LocalVariableSet(record.variable)
             sharedVar.executeDelayedAdd(record.delayedDelta)
-            func(record.line, weight * length / tentativeBatchSize, sharedVar, localVar)
+            func(record.line, weight * totalBatchSize / tentativeBatchSize, sharedVar, localVar)
             record.variable = localVar.toArray()
             sharedVar.clearDelayedDelta()
           }

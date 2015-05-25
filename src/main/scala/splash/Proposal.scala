@@ -54,6 +54,7 @@ class Proposal extends Serializable{
         new_prop.deltaArray.put(key, pair._2)
       }
     }
+    
     new_prop
   }
   
@@ -83,6 +84,7 @@ class Proposal extends Serializable{
         new_prop.deltaArray.put(key, pair._2)
       }
     }
+    
     new_prop
   }
 }

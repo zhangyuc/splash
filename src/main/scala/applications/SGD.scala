@@ -10,28 +10,30 @@ class SGD {
     spc.threadNum = 64
     
     var candidate_stepsize = 0.0
+    var duplication = 1
     if(filename.endsWith("covtype.txt")){
-      spc.dataPerIteraiton = 8
+      duplication = 8
       candidate_stepsize = 20.0
     }
     if(filename.endsWith("rcv1.txt")){
-      spc.dataPerIteraiton = 1
+      duplication = 8
       candidate_stepsize = 100.0
     }
     if(filename.endsWith("mnist38.txt")){
-      spc.dataPerIteraiton = 1
+      duplication = 1
       candidate_stepsize = 100.0
     }
-    if(spc.threadNum == 1){
-      spc.dataPerIteraiton = 1
-    }
-    
-    spc.groupNum = 64
     
     val stepsize = candidate_stepsize
     val num_of_partition = 64
     val num_of_pass = 1000
     val lambda = 1e-4
+    
+    if(num_of_partition == 1){
+      duplication = 1
+    }
+    spc.adaptiveWeightSampleRatio = 1.0 / duplication
+
     
     val conf = new SparkConf().setAppName("SGD Application")
     val sc = new SparkContext(conf)
@@ -60,8 +62,11 @@ class SGD {
       }
       (y,x_key,x_value)
     }).repartition(num_of_partition)
-    val n = data.count()
     val dim = data.map( x => x._2(x._2.length-1) ).reduce( (a,b) => math.max(a, b))
+        
+    // create parametrized RDD
+    val paraRdd = new ParametrizedRDD(data, true).duplicateAndReshuffle(duplication)
+    val n = paraRdd.count()
     
     println("Stochastic Gradient Descent")
     println("Data size = " + n + "; dimension = " + dim)
@@ -76,8 +81,6 @@ class SGD {
       sharedVar.declareArray("ws", dim + 1)
     }
     
-    // take several passes over the dataset
-    val paraRdd = new ParametrizedRDD(data, true)
     paraRdd.foreachSharedVariable(preprocess)
     paraRdd.syncSharedVariable()
     paraRdd.process_func = this.update
@@ -146,15 +149,13 @@ class SGD {
       y_predict += sharedVar.getArrayElement("w", x_key(i)) * x_value(i)
     }
 
-    // update primal vector
-    // stepsize 100 for rcv1 and mnist38, 20 for covtype
     for(i <- 0 until x_key.length)
     {
-      val delta = stepsize * 1 / math.sqrt(t + 1) * y / (1.0 + math.exp(y*y_predict)) * x_value(i)
+      val delta = stepsize * weight / math.sqrt(t + 1) * y / (1.0 + math.exp(y*y_predict)) * x_value(i)
       sharedVar.addArrayElement("w", x_key(i), delta)
       sharedVar.addArrayElement("ws", x_key(i), delta * (total_c - c) / total_c)
     }
-    sharedVar.add("t", 1)
-    sharedVar.add("count", 1)
+    sharedVar.add("t", weight)
+    sharedVar.add("count", weight)
   }
 }

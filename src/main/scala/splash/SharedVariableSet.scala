@@ -6,11 +6,13 @@ class DeltaValue extends Serializable{
   var delta = 0.0
   var unweightedDelta = 0.0
   var prefactor = 1.0
+  var sync = true
 }
 
 class DeltaValueArray extends Serializable{
   var array : Array[DeltaValue] = null
   var prefactor = 1.0
+  var sync = true
 }
 
 class SharedVariableSet extends Serializable{
@@ -60,6 +62,14 @@ class SharedVariableSet extends Serializable{
       deltaValueArrayObject.array(i) = new DeltaValue
     }
     deltaArray.put(key, deltaValueArrayObject)
+  }
+  
+  def dontSync(key:String){
+    delta(key).sync = false
+  }
+  
+  def dontSyncArray(key:String){
+    deltaArray(key).sync = false
   }
   
   private def refreshDeltaArrayElementPrefactor(dv: DeltaValue, new_factor:Double){
@@ -231,39 +241,6 @@ class SharedVariableSet extends Serializable{
     }
   }
   
-  def updateByProposal(prop:Proposal, weight : Double){
-    for( pair <- prop.delta ){
-      val key = pair._1
-      variable.put(key, pair._2.prefactor * variable.applyOrElse(key, (x:Any) => 0.0) + pair._2.delta )
-    }
-    
-    for( pair <- prop.deltaArray ){
-      val key = pair._1
-      if(variableArray.contains(key)){
-        val varArray = variableArray(key)
-        if(pair._2.prefactor == 1){
-          for(i <- 0 until varArray.length){
-            varArray(i) = varArray(i) + pair._2.array(i)
-          }
-        }
-        else{
-          for(i <- 0 until varArray.length){
-            varArray(i) = pair._2.prefactor * varArray(i) + pair._2.array(i)
-          }
-        }
-      }
-      else{
-        val varArray = new Array[Double](pair._2.array.length)
-        for(i <- 0 until varArray.length){
-          varArray(i) = pair._2.array(i)
-        }
-        variableArray.put(key, varArray)
-      }
-    }
-    delta.clear()
-    deltaArray.clear()
-  }
-  
   def executeDelayedAdd(ops : Array[((String,Int), Double)])
   {
     if(ops != null){
@@ -346,26 +323,86 @@ class SharedVariableSet extends Serializable{
     }
   }
   
+  
+  def updateByProposal(prop:Proposal, weight : Double){
+    for( pair <- prop.delta ){
+      val key = pair._1
+      variable.put(key, pair._2.prefactor * variable.applyOrElse(key, (x:Any) => 0.0) + pair._2.delta )
+    }
+    
+    for( pair <- prop.deltaArray ){
+      val key = pair._1
+      if(variableArray.contains(key)){
+        val varArray = variableArray(key)
+        if(pair._2.prefactor == 1){
+          for(i <- 0 until varArray.length){
+            varArray(i) = varArray(i) + pair._2.array(i)
+          }
+        }
+        else{
+          for(i <- 0 until varArray.length){
+            varArray(i) = pair._2.prefactor * varArray(i) + pair._2.array(i)
+          }
+        }
+      }
+      else{
+        val varArray = new Array[Double](pair._2.array.length)
+        for(i <- 0 until varArray.length){
+          varArray(i) = pair._2.array(i)
+        }
+        variableArray.put(key, varArray)
+      }
+    }
+    delta.clear()
+    deltaArray.clear()
+  }
+  
   def exportProposal(weight : Double) = {
     val prop = new Proposal
     
     for(pair <- delta){
-      val pdv = new ProposalDeltaValue
-      pdv.prefactor = pair._2.prefactor
-      pdv.delta = pair._2.delta / weight + pair._2.unweightedDelta 
-      prop.delta.put(pair._1, pdv)
+      if(pair._2.sync){
+        val pdv = new ProposalDeltaValue
+        pdv.prefactor = pair._2.prefactor
+        pdv.delta = pair._2.delta / weight + pair._2.unweightedDelta 
+        prop.delta.put(pair._1, pdv)
+      }
+      else{
+        val key = pair._1
+        variable.put(key, pair._2.prefactor * variable.applyOrElse(key, (x:Any) => 0.0) + pair._2.delta / weight + pair._2.unweightedDelta  )
+      }
     }
     
     for(pair <- deltaArray){
-      val pdva = new ProposalDeltaValueArray
-      pdva.prefactor = pair._2.prefactor
-      pdva.array = new Array[Double](pair._2.array.length)
-      for(i <- 0 until pair._2.array.length){
-        val dv = pair._2.array(i)
-        refreshDeltaArrayElementPrefactor(dv, pair._2.prefactor)
-        pdva.array(i) = dv.delta / weight + dv.unweightedDelta
+      if(pair._2.sync){
+        val pdva = new ProposalDeltaValueArray
+        pdva.prefactor = pair._2.prefactor
+        pdva.array = new Array[Double](pair._2.array.length)
+        for(i <- 0 until pair._2.array.length){
+          val dv = pair._2.array(i)
+          refreshDeltaArrayElementPrefactor(dv, pair._2.prefactor)
+          pdva.array(i) = dv.delta / weight + dv.unweightedDelta
+        }
+        prop.deltaArray.put(pair._1, pdva)
       }
-      prop.deltaArray.put(pair._1, pdva)
+      else{
+        val key = pair._1
+        if(variableArray.contains(key)){
+          val varArray = variableArray(key)
+          for(i <- 0 until varArray.length){
+            val dv = pair._2.array(i)
+            varArray(i) = pair._2.prefactor * varArray(i) + dv.delta / weight + dv.unweightedDelta
+          }
+        }
+        else{
+          val varArray = new Array[Double](pair._2.array.length)
+          for(i <- 0 until varArray.length){
+            val dv = pair._2.array(i)
+            varArray(i) = dv.delta / weight + dv.unweightedDelta
+          }
+          variableArray.put(key, varArray)
+        }
+      }
     }
     prop
   }

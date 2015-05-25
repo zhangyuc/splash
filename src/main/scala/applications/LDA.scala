@@ -8,7 +8,7 @@ class LDA {
   
   val train = (vocfile:String, docfile:String) => {
     val spc = new StreamProcessContext
-    spc.threadNum = 1
+    spc.threadNum = 64
     spc.warmStart = false
     
     val num_of_pass = 1000
@@ -26,17 +26,20 @@ class LDA {
       if(tokens.length == 3){
         for(i <- 0 until tokens(2).toInt){
           if(Random.nextDouble() < 0.5){
-            list.append((tokens(0).toInt, (tokens(1).toInt, true)))
+            val a = (tokens(0).toInt, (tokens(1).toInt, true))
+            list.append(a)
           }
           else{
-            list.append((tokens(0).toInt, (tokens(1).toInt, false)))
+            val a = (tokens(0).toInt, (tokens(1).toInt, false))
+            list.append(a)
           }
         }
       }
       list.iterator
-    }).repartition(num_of_partition).cache()
+    }).partitionBy(new HashPartitioner(num_of_partition)).cache()
     
-    val freq = data.count()
+    val paraRdd = new ParametrizedRDD(data, true)
+    val freq = paraRdd.count()
     val testFreq = data.filter( a => (a._2._2 == false) ).count()
     val trainFreq = freq - testFreq
     val num_of_doc = data.map( x => x._1 ).reduce( (a,b) => math.max(a, b) )
@@ -70,7 +73,7 @@ class LDA {
         sharedVar.declareArray("d:"+tid, num_of_doc+1)
       }
     }
-    val paraRdd = new ParametrizedRDD(data, true)
+    
     paraRdd.process_func = this.update
     paraRdd.evaluate_func = this.evaluateTrainLoss
     
@@ -79,7 +82,7 @@ class LDA {
     paraRdd.syncSharedVariable()
 
     // take several passes over the dataset
-    for(i <- 0 until num_of_pass){  
+    for(i <- 0 until num_of_pass){
       paraRdd.run(spc)
       val loss = math.exp( paraRdd.map(evaluateTestLoss).reduce( (a,b) => a+b ) / testFreq )
       println("%5.3f\t%5.5f\t%f".format(paraRdd.totalTimeEllapsed, loss, paraRdd.proposedGroupNum))
@@ -172,6 +175,7 @@ class LDA {
       sharedVar.add( "wa:" + init_topic, 1)
       sharedVar.addArrayElement( "d:"+init_topic, doc_id, 1)
       sharedVar.add( "da:" + doc_id, 1 )
+      sharedVar.dontSyncArray("d:"+init_topic)
       
       // delayed update
       sharedVar.delayedAddArrayElement( "w:"+init_topic, word_id, -1)
@@ -220,6 +224,7 @@ class LDA {
       sharedVar.add( "wa:" + new_topic, weight)
       sharedVar.addArrayElement( "d:"+new_topic, doc_id, weight)
       sharedVar.add( "da:" + doc_id, weight)
+      sharedVar.dontSyncArray("d:"+new_topic)
       
       // delayed update
       sharedVar.delayedAddArrayElement( "w:"+new_topic, word_id, -weight)

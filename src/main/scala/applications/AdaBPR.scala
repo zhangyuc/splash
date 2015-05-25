@@ -18,7 +18,7 @@ class AdaBPR {
     val dimension = 10
     val lambda = 0.01
     
-    val conf = new SparkConf().setAppName("BPR Application")
+    val conf = new SparkConf().setAppName("BPR Application").set("spark.driver.maxResultSize", "6G")
     val sc = new SparkContext(conf)
     var data = sc.textFile(filename,num_of_partition).map( line => {
       val tokens = line.split(" ")
@@ -68,7 +68,7 @@ class AdaBPR {
     
     for( i <- 0 until num_of_pass ){
       paraRdd.run(spc)
-      val loss = paraRdd.map(evaluateTestLoss).reduce( (a,b) => a+b ) / testFreq
+      val loss = paraRdd.map(evaluateTestLoss).reduce( (a,b) => a+b ) / testFreq 
       println("%5.3f\t%5.8f\t%d".format(paraRdd.totalTimeEllapsed, 1-loss, paraRdd.proposedGroupNum.toInt))
     }
   }
@@ -195,6 +195,7 @@ class AdaBPR {
       vj_delta(dim) *= current_weight
       
       sharedVar.addArray("U:" + user_id, vu_delta)
+      sharedVar.dontSyncArray("U:" + user_id)
       sharedVar.addArray("I:" + item_id, vi_delta)
       sharedVar.addArray("I:" + alt_item_id, vj_delta)
     }
