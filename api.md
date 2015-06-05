@@ -26,7 +26,7 @@ foreachSharedVariable(*func*) | Process the shared variable set by function `fun
 reduceSharedVariable(*func*) | Reduce all shared variable sets by function `func`. The function takes two SharedVariableSet objects as input and returns a single SharedVariableSet object as output.
 syncSharedVariable() | Synchronize the shared variable across all partitions. This operation often follows the execution of the above four operations. If the shared variables is manually changed but not synchronized, the change may not actually take effect.
 getSharedVariable() | Return the set of shared variables in the first partition.
-getAllSharedVariable() | Return the set of shared variables in all partitions.
+getAllSharedVariables() | Return the set of shared variables in all partitions.
 setProcessFunction(*func*) | Set the data processing function. The function `func` takes an arbitrary element, the weight of the element and the associated local/shared variables. It performs update on the local/shared variables.
 setLossFunction(*func*) | Set a loss function for the stochastic algorithm. The function `func` takes an element and the associated local/shared variables. It returns the loss incurred by this element. Setting a loss function for the algorithm is optional, but a reasonable loss function may help Splash choosing a better degree of parallelism.
 run(*spc*) | Use the data processing function to process the dataset. `spc` is a `SplashConf` object. It specifies the hyper-parameters that the system needs.
