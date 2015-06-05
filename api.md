@@ -17,6 +17,7 @@ The Parametrized RDD provides a similar set of operators supported by Spark RDD.
  Operation | Meaning
   --- | ---
 this(*rdd*) | Constructor. It returns a Parametrized RDD object constructed from `rdd`. The partitioning of original `rdd` will be preserved.
+reshuffle() | Reshuffle all elements across partitions. If your original dataset has not been shuffled, this operation is recommended at the creation of the Parametrized RDD.
 map(*func*)       | Return a RDD formed by mapping each element by function `func`. The function takes the element and the associated local/shared variables as input
 foreach(*func*)       | Process each element by function `func`. The function takes the element and the associated local/shared variables as input.
 reduce(*func*) | Reduce all elements by function `func`. The function takes two elements as input and returns a single element as output.
@@ -31,7 +32,6 @@ setLossFunction(*func*) | Set a loss function for the stochastic algorithm. The 
 run(*spc*) | Use the data processing function to process the dataset. `spc` is a `SplashConf` object. It specifies the hyper-parameters that the system needs.
 duplicateAndReshuffle(*n*) | Make `n-1` copies of every element and reshuffle them across partitions. This will enlarge the dataset by a factor of `n`. Parallel threads can reduce communication costs by passing a larger local dataset.
 duplicate(*n*) | Make `n-1` copies of every element without reshuffling.
-reshuffle(*n*) | Reshuffle all elements across partitions. If your original dataset has not been shuffled, this operation is recommended at the creation of the Parametrized RDD.
 
 <br>
 
