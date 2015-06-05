@@ -15,7 +15,7 @@ To install Splash, you need to:
 2. Download the [Splash jar file](https://github.com/zhangyuc/splash/blob/master/target/scala-2.10/splash-0.1.0.jar?raw=true) and put it in your project classpath.
 3. Make the Splash jar file as a dependency when [submitting Spark jobs](http://spark.apache.org/docs/latest/submitting-applications.html).
 
-For step 2-3, take a look at the [examples]({{site.baseurl}}/example/).
+For step 2-3, see how to compile and submit these [examples]({{site.baseurl}}/example/).
 
 # Import Splash
 
