@@ -11,7 +11,7 @@ We provide a quick guide to developing and running stochastic algorithms using S
 
 To install Splash, you need to:
 
-1. Download and install [scala](http://www.scala-lang.org/index.html), [sbt](http://www.scala-sbt.org/index.html) and [Apache Spark](https://spark.apache.org/).
+1. Download and install [Scala](http://www.scala-lang.org/index.html), [sbt](http://www.scala-sbt.org/index.html) and [Apache Spark](https://spark.apache.org/).
 2. Download the [Splash jar file](https://github.com/zhangyuc/splash/blob/master/target/scala-2.10/splash-0.1.0.jar?raw=true) and put it in your project classpath.
 3. Make the Splash jar file as a dependency when [submitting Spark jobs](http://spark.apache.org/docs/latest/submitting-applications.html).
 
