@@ -16,7 +16,6 @@ layout: page
 </ul>
 
 <br>
-<br>
 
 <h1 id="what-is-splash">What is Splash?</h1>
 
@@ -28,4 +27,4 @@ layout: page
 <img src="https://raw.githubusercontent.com/zhangyuc/splash/master/images/compare-with-lbfgs.png" width="350" />
 </p>
 
-<p>Read the <a href="quickstart/">Quick Start</a> to start building your own stochastic algorithm!</p>
+<p>Read the <a href="quickstart/">Quick Start</a> to start building your own stochastic algorithm, or take a look at the source code <a href="quickstart/">here</a></p>
