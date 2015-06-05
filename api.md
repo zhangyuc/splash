@@ -14,7 +14,7 @@ weight : 4
 
 The Parametrized RDD provides a similar set of operators supported by Spark RDD. Since the Parametrized RDD maintains local variables and shared variables, there are additional operators manipulating these data structures.
 
- Operation | Meaning
+ Operator | Meaning
   --- | ---
 this(*rdd*) | Constructor. It returns a Parametrized RDD object constructed from `rdd`. The partitioning of original `rdd` will be preserved.
 reshuffle() | Reshuffle all elements across partitions. If your original dataset has not been shuffled, this operation is recommended at the creation of the Parametrized RDD.
@@ -39,7 +39,7 @@ duplicate(*n*) | Make `n-1` copies of every element without reshuffling.
 
 The local variables assocaited with a data element are organized as a LocalVariableSet instance. The supported operators are:
 
-Operation | Meaning
+Operator | Meaning
   --- | ---
 get(*key*) | Return the value of associated with the key. The value is 0 if the variable has never been set.
 set(*key*, *value*) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Set the variable indexed by `key` to be equal to `value`. 
@@ -51,7 +51,7 @@ toArray() | Convert the variable set to an array of key-value pairs.
 
 All shared variables are organized as a SharedVariableSet instance. There are operations for reading and writing the shared variable set. We list them in a table:
 
- Operation | Meaning
+ Operator | Meaning
   --- | ---
 get(*key*) | Return the value of the key. The initial value is 0.
 add(*key*, *delta*) | Add `delta` to the value of the key.
