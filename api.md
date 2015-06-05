@@ -31,7 +31,7 @@ setLossFunction(*func*) | Set a loss function for the stochastic algorithm. The 
 run(*spc*) | Use the data processing function to process the dataset. `spc` is a `SplashConf` object. It specifies the hyper-parameters that the system needs.
 duplicateAndReshuffle(*n*) | Make `n-1` copies of every element and reshuffle them across partitions. This will enlarge the dataset by a factor of `n`. Parallel threads can reduce communication costs by passing a larger local dataset.
 duplicate(*n*) | Make `n-1` copies of every element without reshuffling.
-reshuffle(*n*) | Reshuffle all elements across partitions. If you dataset has not been shuffled, this operation is recommended at the creation of the Parametrized RDD.
+reshuffle(*n*) | Reshuffle all elements across partitions. If your original dataset has not been shuffled, this operation is recommended at the creation of the Parametrized RDD.
 
 <br>
 
