@@ -1,0 +1,85 @@
+---
+layout: page
+title: ML Package
+permalink: /mlpackage/
+weight : 3
+---
+
+Splash implements classical stochastic algorithms for machine learning. This package will grow as the Splash version evolves.
+
+# Stocahstic Gradient Descent
+
+The **splash.optimization** package implements the [Adaptive SGD](http://www.magicbroom.info/Papers/DuchiHaSi10.pdf) algorithm. To use this package, the dataset should be label-feature pairs stored as `data: RDD[Double, Vector]`. The label should be {0,1,2,...} for classification problems. The `Vector` is defined in [the MLlib package](https://spark.apache.org/docs/1.0.0/api/scala/index.html#org.apache.spark.mllib.linalg.Vector). Running SGD is straightforward:
+
+{% highlight scala %}
+
+import splash.optimization._
+
+val weights = (new StochasticGradientDescent())
+  .setGradient(new LogisticGradient())
+  .setNumIterations(20)
+  .setStepSize(0.5)
+  .optimize(data, initialWeights)
+
+{% endhighlight %}
+
+The `setGradient` method requires a **splash.optimization.Gradient** object as input. You may use Splash's pre-built Gradiant classes: `LogisticGradient`, `MultiClassLogisticGradient`, `HingeGradient` and `LeastSquaresGradient`. or implement your own Gradient class in the following format:
+
+{% highlight scala %}
+
+abstract class Gradient extends Serializable {
+  /**
+   * Request the weight indices that are useful in computing the gradient
+   * or return null if all indices are requested
+   *
+   * @param data features for one data point
+   *
+   * @return indices: Array[Int]
+   */
+  def requestWeightIndices(data: Vector) : Array[Int]
+  
+  /**
+   * Compute the gradient and the loss given the features of a single data point.
+   *
+   * @param data features for one data point
+   * @param label label for this data point
+   * @param weights weights/coefficients corresponding to features
+   *
+   * @return gradient: Vector and loss : Double
+   */
+  def compute(data: Vector, label: Double, weights: Vector): (Vector, Double)
+}
+
+{% endhighlight %}
+
+Other methods set the parameters for the optimization algorithm. Besides the number of iteration and the stepsize, you are also allowed to configure the Splash system parameters (`maxThreadNum`, `dataPerIteration`, etc.). See the [Splash API](/api/) section for the meaning of these parameters.
+
+# Collapsed Gibbs Sampling for LDA
+
+The **splash.sampling** package implements the Collapsed Gibbs Sampling algorithm for learning the [Latent Dirichlet Allocation (LDA)](http://en.wikipedia.org/wiki/Latent_Dirichlet_allocation) model. To use this package, the dataset should take the form `RDD[(docId, wordToken)]`. The `docId` is the ID of the document, the `wordToken` is represents a word token in this document, taking the form
+
+{% highlight scala %}
+
+class WordToken(initWordId : Int, initWordCount : Int, initTopicId : Int) extends Serializable {
+  var wordId = initWordId
+  var wordCount = initWordCount
+  var topicId = initTopicId 
+}
+
+{% endhighlight %}
+
+All IDs should be integers starting from zero. The Collapsed Gibbs Sampling algorithm resamples the `topicId` for each word. Running it is straightforward:
+
+{% highlight scala %}
+
+val corpusWithNewTopics = (new CollapsedGibbsSamplingForLDA)
+  .setNumTopics(100)
+  .setAlphaBeta((0.1,0.01))
+  .setNumIterations(100)
+  .sample(corpusWithOldTopics)
+
+{% endhighlight %}
+
+It returns an `RDD[(docId, wordToken)]` with resampled `topicId`. The `setAlphaBeta` takes the [(alpha, beta) hyper-parameters in the LDA model](https://www.cs.princeton.edu/~blei/papers/BleiNgJordan2003.pdf). 
+
+

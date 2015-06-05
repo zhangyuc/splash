@@ -1,0 +1,32 @@
+---
+layout: page
+title: Examples
+permalink: /example/
+---
+
+To run the logistic regression example (with stochastic gradient descent), download the [Splash Example package](https://github.com/zhangyuc/splash/blob/master/examples/SplashExample.tar.gz?raw=true) and extract it at any directory. The Splash library is included in the package, so you don't have to download it again. To run the code, `cd` into that directory, then compile the code by typing:
+
+	sbt package
+
+It generates a jar file at `./target/scala-2.10/splashexample_2.10-1.0.jar`. We submit this jar file as a Spark job by typing
+
+	*YOUR_SPARK_HOME*/bin/spark-submit --class *ExampleName* \
+	--driver-memory 4G \
+	--jars lib/splash_2.10-0.0.1.jar target/scala-2.10/splashexample_2.10-1.0.jar \
+	data/covtype.txt 20.0 > output.txt
+
+Here, `*YOUR_SPARK_HOME*` should be the directory that you have installed Spark. `*ExampleName*` indicates the name of the example. To run logistic regression, set `*ExampleName* = LogisticRegression`. The file `splash_2.10-0.0.1.jar` is the Splash library and `splashexample_2.10-1.0.jar` is the compiled code to be executed. The two arguments of the app are `data/covtype.txt` and `20.0`, which stand for the location of the data file and the learning rate. The result is output to `output.txt`.
+
+After the algorithm terminates (it takes 100 passes over the dataset), the output should be like:
+
+	Stochastic Gradient Descent
+	Dataset contains 581012 data points.
+	Time = 1.737; Loss = 0.51776285; Group Number = 8
+	Time = 2.718; Loss = 0.51625430; Group Number = 8
+	Time = 3.505; Loss = 0.51591477; Group Number = 8
+	...
+
+Each line corresponds to the outcome after an additional pass over the dataset. The first two quantities are the total time elapsed and the average logistic loss. The last quantity is a system-chosen parameter called *Group Number*. It stands for the number of groups that parallel threads are clustered into. The parallelization strategy of Splash clusters the parallel threads into groups before aggregating their updates. Although this implementation detail is hidden from the user, the group number is helpful in monitoring the statues of the system.
+
+There is another example in the package called *FasterLogisticRegression*. It is an alternative implementation of the logistic regression update using the **array interface**. In this implementation, the vector is stored in an array and the update is performed by manipulating array elements. Since manipulating array is more efficient than manipulating single key-value pairs, this implementation is faster than the previous example. The user is encouraged to verify the performance improvement on their own computer.
+

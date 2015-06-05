@@ -1,0 +1,11 @@
+<footer class="site-footer">
+
+  <div class="wrapper">
+
+      <div class="footer-col">
+        <p class="text">Website is maintained by <a href="http://www.cs.berkeley.edu/~yuczhang/">Yuchen Zhang</a> at UC Berkeley.</p>
+      </div>
+
+  </div>
+
+</footer>

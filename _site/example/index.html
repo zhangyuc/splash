@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Examples</title>
+  <meta name="description" content="">
+
+  <link rel="stylesheet" href="/splash//css/main.css">
+  <link rel="canonical" href="http://zhangyuc.github.io/splash/splash//example/">
+  <link rel="alternate" type="application/rss+xml" title="Splash" href="http://zhangyuc.github.io/splash/splash//feed.xml" />
+</head>
+
+
+  <body>
+
+    <header class="site-header">
+
+  <div class="wrapper">
+
+    <a class="site-title" href="/splash//">Splash</a>
+
+    <nav class="site-nav">
+      <a href="#" class="menu-icon">
+        <svg viewBox="0 0 18 15">
+          <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+          <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+          <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+        </svg>
+      </a>
+
+      <div class="trigger">
+	
+        
+          
+        
+          
+        
+          
+          <a class="page-link" href="/splash//quickstart/">Quick Start</a>
+          
+        
+          
+          <a class="page-link" href="/splash//example/">Examples</a>
+          
+        
+          
+          <a class="page-link" href="/splash//mlpackage/">ML Package</a>
+          
+        
+          
+          <a class="page-link" href="/splash//api/">Splash API</a>
+          
+        
+      </div>
+    </nav>
+
+  </div>
+
+</header>
+
+
+    <div class="page-content">
+      <div class="wrapper">
+        <div class="post">
+
+  <header class="post-header">
+    <h1 class="post-title">Examples</h1>
+  </header>
+
+  <article class="post-content">
+    <p>First, download the <a href="https://github.com/zhangyuc/splash/blob/master/examples/SplashExample.tar.gz?raw=true">Splash Example package</a> and extract it at any directory. The source codes locate at <code>/src/main/scala/</code> The Splash library is included at <code>/lib/</code>, so you don’t have to download it again. To compile the code, <code>cd</code> into the directory where you extract the package and type:</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">sbt package</code></pre></div>
+
+<p>It generates a jar file at <code>./target/scala-2.10/splashexample.jar</code>. To run the code, submit this jar file as a Spark job:</p>
+
+<div class="highlight"><pre><code class="language-bash" data-lang="bash">YOUR_SPARK_HOME/bin/spark-submit --class ExampleName <span class="se">\</span>
+  --driver-memory 4G <span class="se">\</span>
+  --jars lib/splash-0.1.0.jar target/scala-2.10/splashexample.jar <span class="se">\</span>
+  data/covtype.txt &gt; output.txt</code></pre></div>
+
+<p>Here, <strong>YOUR_SPARK_HOME</strong> should be replaced by the directory that Spark is installed; <strong>ExampleName</strong> should be replaced by <code>DocumentStatistics</code>, <code>SplashOptimization</code> or <code>LogisticRegression</code>, depending on the example you want to run. The file <code>splash-0.1.0.jar</code> is the Splash library and <code>splashexample.jar</code> is the compiled code to be executed. The argument <code>data/covtype.txt</code> stands for the location of the data file. The result is output to <code>output.txt</code>.</p>
+
+<h1 id="document-statistics">Document Statistics</h1>
+
+<p>The Document Statistics example computes the word statistics of a document. The data processing function reads a weighted <code>line</code> form the document to update the number of <code>lines</code>, <code>words</code> and <code>characters</code> through a shared variable <code>sharedVar</code>. The <code>weight</code> argument tells the algorithm that this line appears <code>weight</code> times in the current observation.</p>
+
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">org.apache.spark.</span><span class="o">{</span><span class="nc">SparkConf</span><span class="o">,</span><span class="nc">SparkContext</span><span class="o">}</span>
+<span class="k">import</span> <span class="nn">splash.core.ParametrizedRDD</span>
+
+<span class="k">object</span> <span class="nc">DocumentStatistics</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">main</span><span class="o">(</span><span class="n">args</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">path</span> <span class="k">=</span> <span class="n">args</span><span class="o">(</span><span class="mi">0</span><span class="o">)</span>
+    <span class="k">val</span> <span class="n">sc</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">SparkContext</span><span class="o">(</span><span class="k">new</span> <span class="nc">SparkConf</span><span class="o">())</span>
+    
+    <span class="k">val</span> <span class="n">paramRdd</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ParametrizedRDD</span><span class="o">(</span><span class="n">sc</span><span class="o">.</span><span class="n">textFile</span><span class="o">(</span><span class="n">path</span><span class="o">))</span>
+    <span class="k">val</span> <span class="n">sharedVar</span> <span class="k">=</span> <span class="n">paramRdd</span><span class="o">.</span><span class="n">setProcessFunction</span><span class="o">((</span><span class="n">line</span><span class="o">,</span> <span class="n">weight</span><span class="o">,</span> <span class="n">sharedVar</span><span class="o">,</span> <span class="n">localVar</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="o">{</span>
+      <span class="n">sharedVar</span><span class="o">.</span><span class="n">add</span><span class="o">(</span><span class="s">&quot;lines&quot;</span><span class="o">,</span> <span class="n">weight</span><span class="o">)</span>
+      <span class="n">sharedVar</span><span class="o">.</span><span class="n">add</span><span class="o">(</span><span class="s">&quot;words&quot;</span><span class="o">,</span> <span class="n">weight</span> <span class="o">*</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="o">(</span><span class="s">&quot; &quot;</span><span class="o">).</span><span class="n">length</span><span class="o">)</span>
+      <span class="n">sharedVar</span><span class="o">.</span><span class="n">add</span><span class="o">(</span><span class="s">&quot;characters&quot;</span><span class="o">,</span> <span class="n">weight</span> <span class="o">*</span> <span class="n">line</span><span class="o">.</span><span class="n">length</span><span class="o">)</span>
+    <span class="o">}).</span><span class="n">run</span><span class="o">().</span><span class="n">getSharedVariable</span><span class="o">()</span>
+    
+    <span class="n">println</span><span class="o">(</span><span class="s">&quot;Lines: &quot;</span> <span class="o">+</span> <span class="n">sharedVar</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="s">&quot;lines&quot;</span><span class="o">).</span><span class="n">toLong</span><span class="o">)</span>
+    <span class="n">println</span><span class="o">(</span><span class="s">&quot;words: &quot;</span> <span class="o">+</span> <span class="n">sharedVar</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="s">&quot;words&quot;</span><span class="o">).</span><span class="n">toLong</span><span class="o">)</span>
+    <span class="n">println</span><span class="o">(</span><span class="s">&quot;Characters: &quot;</span> <span class="o">+</span> <span class="n">sharedVar</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="s">&quot;characters&quot;</span><span class="o">).</span><span class="n">toLong</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div>
+
+<h1 id="splash-optimization">Splash Optimization</h1>
+
+<p>Splash has a collection of pre-built algorithms for machine learning. One of them is the SGD algorithm for optimization. It provides an API similar to that of the <a href="https://spark.apache.org/docs/latest/mllib-optimization.html">MLlib’s optimization package</a>. MLlib implements a mini-batch version of SGD but doesn’t support the native sequential SGD. </p>
+
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">weights</span> <span class="k">=</span> <span class="o">(</span><span class="k">new</span> <span class="n">splash</span><span class="o">.</span><span class="n">optimization</span><span class="o">.</span><span class="nc">StochasticGradientDescent</span><span class="o">())</span>
+  <span class="o">.</span><span class="n">setGradient</span><span class="o">(</span><span class="k">new</span> <span class="n">splash</span><span class="o">.</span><span class="n">optimization</span><span class="o">.</span><span class="nc">LogisticGradient</span><span class="o">())</span>
+  <span class="o">.</span><span class="n">setNumIterations</span><span class="o">(</span><span class="mi">20</span><span class="o">)</span>
+  <span class="o">.</span><span class="n">optimize</span><span class="o">(</span><span class="n">rdd</span><span class="o">,</span> <span class="n">initialWeights</span><span class="o">)</span></code></pre></div>
+
+<p>The above code creates a <code>StochasticGradientDescent</code> object, sets the gradient to be the logistic gradient and tells the algorithm to take 20 passes over the <code>rdd</code> dataset. The output of SGD is assigned to the vector <code>weights</code>. The full code in the <a href="https://github.com/zhangyuc/splash/blob/master/examples/SplashExample.tar.gz?raw=true">Splash Example package</a> illustrates how this piece of code can be integrated with the data analytics pipeline of Spark.</p>
+
+<p>On the <a href="http://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/multiclass.html#mnist8m">mnist8m dataset</a> (digit recognition, data size = 20GB), Splash’s SGD is 25x faster than <a href="https://spark.apache.org/docs/latest/mllib-optimization.html#l-bfgs">MLlib’s L-BFGS</a> and 75x faster than <a href="https://spark.apache.org/docs/latest/mllib-optimization.html#gradient-descent-and-stochastic-gradient-descent">MLlib’s mini-batch SGD (with manually tuned mini-batch size)</a> for achieving the same logistic loss. All algorithms run on a 64-core cluster. </p>
+
+<p align="center">
+<img src="https://raw.githubusercontent.com/zhangyuc/splash/master/images/compare-with-lbfgs.png" width="350" />
+</p>
+
+<h1 id="sgd-for-logistic-regression">SGD for Logistic Regression</h1>
+
+<p>We also provides a bare-hand Logistic Regression implementation using the Splash programming interface. It gives you a concrete idea of how the data processing function can be implemented:</p>
+
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">process</span> <span class="k">=</span> <span class="o">(</span><span class="n">elem</span><span class="k">:</span> <span class="kt">LabeledPoint</span><span class="o">,</span> <span class="n">weight</span><span class="k">:</span> <span class="kt">Double</span><span class="o">,</span> <span class="n">sharedVar</span> <span class="k">:</span> <span class="kt">SharedVariableSet</span><span class="o">,</span>  <span class="n">localVar</span><span class="k">:</span> <span class="kt">LocalVariableSet</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">label</span> <span class="k">=</span> <span class="n">elem</span><span class="o">.</span><span class="n">label</span>
+  <span class="k">val</span> <span class="n">features</span> <span class="k">=</span> <span class="n">elem</span><span class="o">.</span><span class="n">features</span><span class="o">.</span><span class="n">asInstanceOf</span><span class="o">[</span><span class="kt">SparseVector</span><span class="o">]</span>
+  <span class="k">val</span> <span class="n">xIndices</span> <span class="k">=</span> <span class="n">features</span><span class="o">.</span><span class="n">indices</span>
+  <span class="k">val</span> <span class="n">xValues</span> <span class="k">=</span> <span class="n">features</span><span class="o">.</span><span class="n">values</span>
+  <span class="k">val</span> <span class="n">n</span> <span class="k">=</span> <span class="n">xIndices</span><span class="o">.</span><span class="n">length</span>
+  
+  <span class="n">sharedVar</span><span class="o">.</span><span class="n">add</span><span class="o">(</span><span class="s">&quot;t&quot;</span><span class="o">,</span> <span class="n">weight</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">t</span> <span class="k">=</span> <span class="n">sharedVar</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="s">&quot;t&quot;</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">learningRate</span> <span class="k">=</span> <span class="n">sharedVar</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="s">&quot;learningRate&quot;</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">regParam</span> <span class="k">=</span> <span class="n">sharedVar</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="s">&quot;regParam&quot;</span><span class="o">)</span>
+  
+  <span class="c1">// get weight vector w</span>
+  <span class="k">val</span> <span class="n">w</span> <span class="k">=</span> <span class="n">sharedVar</span><span class="o">.</span><span class="n">getArrayElements</span><span class="o">(</span><span class="s">&quot;w&quot;</span><span class="o">,</span> <span class="n">xIndices</span><span class="o">)</span>
+  
+  <span class="c1">// compute the inner product x * w</span>
+  <span class="k">var</span> <span class="n">innerProduct</span> <span class="k">=</span> <span class="mf">0.0</span>
+  <span class="k">for</span><span class="o">(</span><span class="n">i</span> <span class="k">&lt;-</span> <span class="mi">0</span> <span class="n">until</span> <span class="n">n</span><span class="o">){</span>
+    <span class="n">innerProduct</span> <span class="o">+=</span> <span class="n">xValues</span><span class="o">(</span><span class="n">i</span><span class="o">)</span> <span class="o">*</span> <span class="n">w</span><span class="o">(</span><span class="n">i</span><span class="o">)</span>
+  <span class="o">}</span>
+  <span class="k">val</span> <span class="n">margin</span> <span class="k">=</span> <span class="o">-</span> <span class="mf">1.0</span> <span class="o">*</span> <span class="n">innerProduct</span>
+  <span class="k">val</span> <span class="n">multiplier</span> <span class="k">=</span> <span class="o">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="o">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="o">(</span><span class="n">margin</span><span class="o">)))</span> <span class="o">-</span> <span class="n">label</span>
+  
+  <span class="c1">// compute the update</span>
+  <span class="k">val</span> <span class="n">delta</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Array</span><span class="o">[</span><span class="kt">Double</span><span class="o">](</span><span class="n">n</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">stepsize</span> <span class="k">=</span> <span class="n">weight</span> <span class="o">*</span> <span class="n">learningRate</span> <span class="o">/</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="o">(</span><span class="n">t</span><span class="o">)</span>
+  <span class="k">for</span><span class="o">(</span><span class="n">i</span> <span class="k">&lt;-</span> <span class="mi">0</span> <span class="n">until</span> <span class="n">n</span><span class="o">){</span>
+    <span class="n">delta</span><span class="o">(</span><span class="n">i</span><span class="o">)</span> <span class="k">=</span> <span class="o">-</span> <span class="n">stepsize</span> <span class="o">*</span> <span class="n">multiplier</span> <span class="o">*</span> <span class="n">xValues</span><span class="o">(</span><span class="n">i</span><span class="o">)</span>
+  <span class="o">}</span>
+  
+  <span class="c1">// update the weight vector</span>
+  <span class="n">sharedVar</span><span class="o">.</span><span class="n">multiplyArray</span><span class="o">(</span><span class="s">&quot;w&quot;</span><span class="o">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">stepsize</span> <span class="o">*</span> <span class="n">regParam</span><span class="o">)</span>
+  <span class="n">sharedVar</span><span class="o">.</span><span class="n">addArrayElements</span><span class="o">(</span><span class="s">&quot;w&quot;</span><span class="o">,</span> <span class="n">xIndices</span><span class="o">,</span> <span class="n">delta</span><span class="o">)</span>
+<span class="o">}</span></code></pre></div>
+
+<p>The above code uses multiple operators on the shared variable. The <strong>get</strong> and <strong>getArrayElements</strong> method returns the variable values. The <strong>multiplyArray</strong> method scales the whole array by a constant. The <strong>addArrayElements</strong> method adds a <code>delta</code> vector to a subset of coordinates. See the full code base for more details.</p>
+
+
+  </article>
+
+</div>
+
+      </div>
+    </div>
+
+    <footer class="site-footer">
+
+  <div class="wrapper">
+
+      <div class="footer-col">
+        <p class="text">Website maintained by <a href="http://www.cs.berkeley.edu/~yuczhang/">Yuchen Zhang</a> at UC Berkeley.</p>
+      </div>
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>

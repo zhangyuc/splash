@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+
+  {% include head.html %}
+
+  <body>
+
+    {% include header.html %}
+<div class="navbar" id="page-top">
+      <div class="navbar-inner">
+        <div class="container">
+          <a class="brand" href="/">EverCoding.net</a>
+          <ul class="nav">
+            <li><a href="/pages.html">Pages</a></li>        
+        <li><a href="/archive.html">Archive</a></li>
+        <li><a href="/about.html">About</a></li>
+        <li><a href="/messages.html">Messages</a></li>
+
+</div>
+</div>
+</div>
+    <div class="page-content">
+      <div class="wrapper">
+        {{ content }}
+      </div>
+    </div>
+
+    {% include footer.html %}
+
+  </body>
+
+</html>

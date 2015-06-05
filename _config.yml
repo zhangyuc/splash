@@ -1,0 +1,11 @@
+# Site settings
+title: Splash
+email: yuczhang@eecs.berkeley.edu
+url: http://zhangyuc.github.io/splash
+baseurl: /splash/
+github_username:  zhangyuc
+
+# Build settings
+markdown: kramdown
+highlighter: pygments
+

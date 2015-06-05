@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Quick Start</title>
+  <meta name="description" content="">
+
+  <link rel="stylesheet" href="/splash//css/main.css">
+  <link rel="canonical" href="http://zhangyuc.github.io/splash/splash//quickstart/">
+  <link rel="alternate" type="application/rss+xml" title="Splash" href="http://zhangyuc.github.io/splash/splash//feed.xml" />
+</head>
+
+
+  <body>
+
+    <header class="site-header">
+
+  <div class="wrapper">
+
+    <a class="site-title" href="/splash//">Splash</a>
+
+    <nav class="site-nav">
+      <a href="#" class="menu-icon">
+        <svg viewBox="0 0 18 15">
+          <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+          <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+          <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+        </svg>
+      </a>
+
+      <div class="trigger">
+	
+        
+          
+        
+          
+        
+          
+          <a class="page-link" href="/splash//quickstart/">Quick Start</a>
+          
+        
+          
+          <a class="page-link" href="/splash//example/">Examples</a>
+          
+        
+          
+          <a class="page-link" href="/splash//mlpackage/">ML Package</a>
+          
+        
+          
+          <a class="page-link" href="/splash//api/">Splash API</a>
+          
+        
+      </div>
+    </nav>
+
+  </div>
+
+</header>
+
+
+    <div class="page-content">
+      <div class="wrapper">
+        <div class="post">
+
+  <header class="post-header">
+    <h1 class="post-title">Quick Start</h1>
+  </header>
+
+  <article class="post-content">
+    <p>We provide a quick guide to developing and running stochastic algorithms using Splash. After reading this section, you may want to look at the <a href="/example/">examples</a>, or learn about the pre-built <a href="/mlpackage/">Splash Machine Learning Package</a>.</p>
+
+<h1 id="install-splash">Install Splash</h1>
+
+<p>To install Splash, you need to:</p>
+
+<ol>
+  <li>Download and install <a href="http://www.scala-lang.org/index.html">scala</a>, <a href="http://www.scala-sbt.org/index.html">sbt</a> and <a href="https://spark.apache.org/">Apache Spark</a>.</li>
+  <li>Download the <a href="https://github.com/zhangyuc/splash/blob/master/target/scala-2.10/splash-0.1.0.jar?raw=true">Splash jar file</a> and put it in your project classpath.</li>
+  <li>Make the Splash jar file as a dependency when <a href="http://spark.apache.org/docs/latest/submitting-applications.html">submitting Spark jobs</a>.</li>
+</ol>
+
+<h1 id="import-splash">Import Splash</h1>
+
+<p>When Splash is in your project classpath, you can write a self-contained Scala application using the Splash API. Besides importing Spark packages, you also need to import the Splash package in scala, by typing:</p>
+
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">splash.core._</span></code></pre></div>
+
+<h1 id="create-dataset">Create Dataset</h1>
+
+<p>The first step is to create a distributed dataset. Splash provides an abstraction called <strong>Parametrized RDD</strong>. The Parametrized RDD is very similar to the Resilient Distributed Dataset (RDD) of Spark. It can be created by a standard RDD:</p>
+
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">paramRdd</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ParametrizedRDD</span><span class="o">(</span><span class="n">rdd</span><span class="o">)</span></code></pre></div>
+
+<p>where <code>rdd</code> is the RDD that holds your dataset. </p>
+
+<h1 id="set-up-data-processing-function">Set-up Data Processing Function</h1>
+
+<p>To execute the algorithm, set a data processing function <code>process</code> to the dataset by</p>
+
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="n">paramRdd</span><span class="o">.</span><span class="n">setProcessFunction</span><span class="o">(</span><span class="n">process</span><span class="o">)</span></code></pre></div>
+
+<p>The <code>process</code> function is implemented by the user. It takes four objects as input: <strong>a data element</strong> from the dataset, <strong>the weight</strong> of this element, <strong>the shared variable</strong> shared across the dataset and <strong>the local variable</strong> associated with this element. The <code>process</code> function reads the input to perform some update on the variables. The capability of processing weighted elements is mandatory even if the original data is unweighted. This is because that Splash will automatically assign non-unit weights to the samples as a part of its parallelization strategy. For example, the algorithm for computing document statistics can be implemented as:</p>
+
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">process</span> <span class="k">=</span> <span class="o">(</span><span class="n">line</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">weight</span><span class="k">:</span> <span class="kt">Double</span><span class="o">,</span> <span class="n">sharedVar</span><span class="k">:</span> <span class="kt">SharedVariableSet</span><span class="o">,</span>  <span class="n">localVar</span><span class="k">:</span> <span class="kt">LocalVariableSet</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="o">{</span>
+  <span class="n">sharedVar</span><span class="o">.</span><span class="n">add</span><span class="o">(</span><span class="s">&quot;lines&quot;</span><span class="o">,</span> <span class="n">weight</span><span class="o">)</span>
+  <span class="n">sharedVar</span><span class="o">.</span><span class="n">add</span><span class="o">(</span><span class="s">&quot;words&quot;</span><span class="o">,</span> <span class="n">weight</span> <span class="o">*</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="o">(</span><span class="s">&quot; &quot;</span><span class="o">).</span><span class="n">length</span><span class="o">)</span>
+  <span class="n">sharedVar</span><span class="o">.</span><span class="n">add</span><span class="o">(</span><span class="s">&quot;characters&quot;</span><span class="o">,</span> <span class="n">weight</span> <span class="o">*</span> <span class="n">line</span><span class="o">.</span><span class="n">length</span><span class="o">)</span>
+<span class="o">}</span></code></pre></div>
+
+<p>In the programming interface, all variables are stored as key-value pairs. The key must be a string. The value could be either a real number of an array of real numbers. In the above code, the shared variable is updated by the <code>add</code> method. If the algorithm needs to read a variable, use the <code>get</code> method:</p>
+
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">v1</span> <span class="k">=</span> <span class="n">localVar</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="n">key</span><span class="o">)</span>
+<span class="k">val</span> <span class="n">v2</span> <span class="k">=</span> <span class="n">sharedVar</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="n">key</span><span class="o">)</span></code></pre></div>
+
+<p>The local variable can be updated by putting a new value:</p>
+
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="n">localVar</span><span class="o">.</span><span class="n">set</span><span class="o">(</span><span class="n">key</span><span class="o">,</span><span class="n">value</span><span class="o">)</span></code></pre></div>
+
+<p>The shared variable must be updated by <strong>transformations</strong>. Splash provides three types of operators for transforming the shared variable: <strong>add</strong>, <strong>delayed-add</strong> and <strong>multiply</strong>. See the <a href="/api/">Splash API</a> section for more information.</p>
+
+<h1 id="running-the-algorithm">Running the Algorithm</h1>
+
+<p>After setting up the processing function, call the <code>run()</code> method to start running the algorithm:</p>
+
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">spc</span> <span class="k">=</span> <span class="o">(</span><span class="k">new</span> <span class="nc">SplashConf</span><span class="o">).</span><span class="n">set</span><span class="o">(</span><span class="s">&quot;max.thread.number&quot;</span><span class="o">,</span> <span class="mi">8</span><span class="o">)</span>
+<span class="n">paramRdd</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">spc</span><span class="o">)</span></code></pre></div>
+
+<p>so that every thread starts processing its local dataset and synchronize at the end. In the default setting, every thread takes a full pass over its local dataset by calling the <code>run()</code> method. You can change the amount of data to be processed by configuring the <code>spc</code> object. You can also take multiple passes over the dataset by multiple calls to the <code>run()</code> method.</p>
+
+<h1 id="output-and-evaluation">Output and Evaluation</h1>
+
+<p>After processing the dataset, you can output the result by:</p>
+
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">sharedVar</span> <span class="k">=</span> <span class="n">paramRdd</span><span class="o">.</span><span class="n">getSharedVariable</span><span class="o">()</span>
+<span class="n">println</span><span class="o">(</span><span class="s">&quot;Lines: &quot;</span> <span class="o">+</span> <span class="n">sharedVar</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="s">&quot;lines&quot;</span><span class="o">).</span><span class="n">toLong</span><span class="o">)</span>
+<span class="n">println</span><span class="o">(</span><span class="s">&quot;words: &quot;</span> <span class="o">+</span> <span class="n">sharedVar</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="s">&quot;words&quot;</span><span class="o">).</span><span class="n">toLong</span><span class="o">)</span>
+<span class="n">println</span><span class="o">(</span><span class="s">&quot;Characters: &quot;</span> <span class="o">+</span> <span class="n">sharedVar</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="s">&quot;characters&quot;</span><span class="o">).</span><span class="n">toLong</span><span class="o">)</span></code></pre></div>
+
+<p>It is also possible to MapReduce the Parametrized RDD. For example, by calling</p>
+
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">loss</span> <span class="k">=</span> <span class="n">paramRdd</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">func</span><span class="o">).</span><span class="n">sum</span><span class="o">()</span></code></pre></div>
+
+<p>every element in the dataset is mapped by the <code>func</code> function. If <code>func</code> returns a real number, it will be aggregated across the dataset. This is useful for evaluating the performance of the algorithm. See <a href="/api/">Splash API</a> for more options.</p>
+
+
+  </article>
+
+</div>
+
+      </div>
+    </div>
+
+    <footer class="site-footer">
+
+  <div class="wrapper">
+
+      <div class="footer-col">
+        <p class="text">Website maintained by <a href="http://www.cs.berkeley.edu/~yuczhang/">Yuchen Zhang</a> at UC Berkeley.</p>
+      </div>
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>
