@@ -26,7 +26,7 @@ val weights = (new StochasticGradientDescent())
 
 {% endhighlight %}
 
-The `setGradient` method requires a **splash.optimization.Gradient** object as input. You may use Splash's pre-built Gradiant classes: `LogisticGradient`, `MultiClassLogisticGradient`, `HingeGradient` and `LeastSquaresGradient`. or implement your own Gradient class in the following format:
+The `setGradient` method requires a **splash.optimization.Gradient** object as input. You may use Splash's pre-built Gradiant classes: `LogisticGradient`, `MultiClassLogisticGradient`, `HingeGradient` or `LeastSquaresGradient`; or implement your own Gradient class in the following format:
 
 {% highlight scala %}
 
@@ -55,7 +55,7 @@ abstract class Gradient extends Serializable {
 
 {% endhighlight %}
 
-Other methods set the parameters for the optimization algorithm. Besides the number of iteration and the stepsize, you are also allowed to configure the Splash system parameters (`maxThreadNum`, `dataPerIteration`, etc.). See the [Splash API]({{site.baseurl}}/api/) section for the meaning of these parameters.
+Besides the number of iteration and the stepsize, you are also allowed to configure the Splash system parameters (`maxThreadNum`, `dataPerIteration`, etc.). See the [Splash API]({{site.baseurl}}/api/) section for the meaning of these parameters.
 
 # Collapsed Gibbs Sampling for LDA
 
