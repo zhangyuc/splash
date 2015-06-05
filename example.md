@@ -20,8 +20,12 @@ YOUR_SPARK_HOME/bin/spark-submit --class ExampleName \
   data/covtype.txt > output.txt
 {% endhighlight %}
 
-Here, **YOUR_SPARK_HOME** should be replaced by the directory that Spark is installed; **ExampleName** should be replaced by `DocumentStatistics`, `SplashOptimization` or `LogisticRegression`, depending on the example you want to run. The file `splash-0.1.0.jar` is the Splash library and `splashexample.jar` is the compiled code to be executed. The argument `data/covtype.txt` stands for the location of the data file. The result is output to `output.txt`.
+Here, **YOUR_SPARK_HOME** should be replaced by the directory that Spark is installed; **ExampleName** should be replaced by `DocumentStatistics`, `SplashOptimization` or `LogisticRegression`, depending on the example you want to run. The file `splash-0.1.0.jar` is the Splash library and `splashexample.jar` is the compiled code to be executed. The argument `data/covtype.txt` stands for the location of the data file. The result is written to `output.txt`.
 
+Hee is a list of examples:
+
+* TOC
+{:toc}
 
 # Document Statistics
 
@@ -73,7 +77,7 @@ On the [mnist8m dataset](http://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/
 
 # SGD for Logistic Regression
 
-We also provides a bare-hand Logistic Regression implementation using the Splash programming interface. It gives you a concrete idea of how the data processing function can be implemented:
+We also provide a bare-hand Logistic Regression implementation using the Splash programming interface. It gives you a concrete idea of how the data processing function can be implemented:
 
 {% highlight scala %}
 val process = (elem: LabeledPoint, weight: Double, sharedVar : SharedVariableSet,  localVar: LocalVariableSet) => {

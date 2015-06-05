@@ -5,7 +5,10 @@ permalink: /mlpackage/
 weight : 2
 ---
 
-Splash implements classical stochastic algorithms for machine learning. This package will grow as the Splash version evolves.
+Splash implements classical stochastic algorithms for machine learning:
+
+* TOC
+{:toc}
 
 # Stocahstic Gradient Descent
 

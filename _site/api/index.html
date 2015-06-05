@@ -2,16 +2,34 @@
 <html>
 
   <head>
-  <meta charset="utf-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <title>Splash - Distributed Stochastic Learning on Apache Spark</title>
-  <meta name="description" content="">
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <link rel="stylesheet" href="/css/main.css">
-  <link rel="canonical" href="http://zhangyuc.github.io/splash/api/">
-  <link rel="alternate" type="application/rss+xml" title="Splash" href="http://zhangyuc.github.io/splash/feed.xml" />
+<title>Splash - Distributed Stochastic Learning on Apache Spark</title>
+<meta name="description" content="">
+
+<link rel="stylesheet" href="/css/main.css">
+<link rel="canonical" href="http://zhangyuc.github.io/splash/api/">
+<link rel="alternate" type="application/rss+xml" title="Splash" href="http://zhangyuc.github.io/splash/feed.xml" />
+
+<style>
+
+th {
+    background-color: gray;
+    color: white;
+}
+
+table {
+    border-collapse: collapse;
+}
+
+table, td, th {
+    border: 1px solid black;
+}
+</style>
+
 </head>
 
 
@@ -72,9 +90,16 @@
   </header>
 
   <article class="post-content">
-    <h1 id="parametrized-rdd-operators">Parametrized RDD Operators</h1>
+    <ul id="markdown-toc">
+  <li><a href="#parametrized-rdd-operators">Parametrized RDD Operators</a></li>
+  <li><a href="#local-variable-operators">Local Variable Operators</a></li>
+  <li><a href="#shared-variable-operators">Shared Variable Operators</a></li>
+  <li><a href="#splash-configurations">Splash Configurations</a></li>
+</ul>
 
-<p>The parametrized RDD provides a similar set of operations that are supported by Spark RDD. Since the parametrized RDD maintains local variables and shared variables, there are additional operations manipulating these data structures.</p>
+<h1 id="parametrized-rdd-operators">Parametrized RDD Operators</h1>
+
+<p>The Parametrized RDD provides a similar set of operators supported by Spark RDD. Since the Parametrized RDD maintains local variables and shared variables, there are additional operators manipulating these data structures.</p>
 
 <table>
   <thead>
@@ -85,8 +110,8 @@
   </thead>
   <tbody>
     <tr>
-      <td>this(<em>rdd</em>, <em>preservePartitions</em>)</td>
-      <td>Constructor. It returns a Parametrized RDD object constructed from <code>rdd</code>. There is an optional boolean argument <code>preservePartitions</code>. If <code>preservePartitions = true</code>, then the partitioning of <code>rdd</code> will be preserved. Otherwise, the original RDD will be repartitioned such that the number of partitions is equal to the number of available cores. The default value of <code>preservePartitions</code> is <code>false</code>.</td>
+      <td>this(<em>rdd</em>)</td>
+      <td>Constructor. It returns a Parametrized RDD object constructed from <code>rdd</code>. The partitioning of original <code>rdd</code> will be preserved.</td>
     </tr>
     <tr>
       <td>map(<em>func</em>)</td>
@@ -101,11 +126,11 @@
       <td>Reduce all elements by function <code>func</code>. The function takes two elements as input and returns a single element as output.</td>
     </tr>
     <tr>
-      <td>mapSharedVariable (<em>func</em>)</td>
+      <td>mapSharedVariable(<em>func</em>)</td>
       <td>Return a RDD formed by mapping the shared variable set by function <code>func</code>.</td>
     </tr>
     <tr>
-      <td>foreachSharedVariable (<em>func</em>)</td>
+      <td>foreachSharedVariable(<em>func</em>)</td>
       <td>Process the shared variable set by function <code>func</code>.</td>
     </tr>
     <tr>
@@ -117,33 +142,72 @@
       <td>Synchronize the shared variable across all partitions. This operation often follows the execution of the above four operations. If the shared variables is manually changed but not synchronized, the change may not actually take effect.</td>
     </tr>
     <tr>
-      <td>getFirstSharedVariable()</td>
+      <td>getSharedVariable()</td>
       <td>Return the set of shared variables in the first partition.</td>
     </tr>
     <tr>
       <td>getAllSharedVariable()</td>
-      <td>Return an array of the set of shared variables in all partitions.</td>
+      <td>Return the set of shared variables in all partitions.</td>
     </tr>
     <tr>
-      <td>setProcessFunction (<em>func</em>)</td>
+      <td>setProcessFunction(<em>func</em>)</td>
       <td>Set the data processing function. The function <code>func</code> takes an arbitrary element, the weight of the element and the associated local/shared variables. It performs update on the local/shared variables.</td>
     </tr>
     <tr>
       <td>setLossFunction(<em>func</em>)</td>
-      <td>Set a loss function for the stochastic algorithm. The function <code>func</code> takes an element and the associated local/shared variables. It returns the loss incurred by this element. Setting a loss function for the algorithm is optional, but a reasonable loss function may help Splash choosing a better parallelization strategy.</td>
+      <td>Set a loss function for the stochastic algorithm. The function <code>func</code> takes an element and the associated local/shared variables. It returns the loss incurred by this element. Setting a loss function for the algorithm is optional, but a reasonable loss function may help Splash choosing a better degree of parallelism.</td>
     </tr>
     <tr>
       <td>run(<em>spc</em>)</td>
-      <td>Use the data processing function to process the dataset. <code>spc</code> is a StreamProcessContext object. It includes hyper-parameters for running the algorithm.</td>
+      <td>Use the data processing function to process the dataset. <code>spc</code> is a <code>SplashConf</code> object. It specifies the hyper-parameters that the system needs.</td>
     </tr>
     <tr>
       <td>duplicateAndReshuffle(<em>n</em>)</td>
-      <td>Make <code>n-1</code> copies of every element and reshuffle them across partitions. This will enlarge the dataset by a factor of <code>n</code>. Parallel threads can reduce communication costs by processing a larger local dataset. If <code>n=1</code>, then the dataset is simply reshuffled.</td>
+      <td>Make <code>n-1</code> copies of every element and reshuffle them across partitions. This will enlarge the dataset by a factor of <code>n</code>. Parallel threads can reduce communication costs by passing a larger local dataset.</td>
+    </tr>
+    <tr>
+      <td>duplicate(<em>n</em>)</td>
+      <td>Make <code>n-1</code> copies of every element without reshuffling.</td>
+    </tr>
+    <tr>
+      <td>reshuffle(<em>n</em>)</td>
+      <td>Reshuffle all elements across partitions.</td>
     </tr>
   </tbody>
 </table>
 
-<h1 id="shared-variable-set-operators">Shared Variable Set Operators</h1>
+<p><br /></p>
+
+<h1 id="local-variable-operators">Local Variable Operators</h1>
+
+<p>The local variables assocaited with a data element are organized as a LocalVariableSet instance. The supported operators are:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Operation</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>get(<em>key</em>)</td>
+      <td>Return the value of associated with the key. The value is 0 if the variable has never been set.</td>
+    </tr>
+    <tr>
+      <td>set(<em>key</em>, <em>value</em>)                         </td>
+      <td>Set the variable indexed by <code>key</code> to be equal to <code>value</code>.</td>
+    </tr>
+    <tr>
+      <td>toArray()</td>
+      <td>Convert the variable set to an array of key-value pairs.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><br /></p>
+
+<h1 id="shared-variable-operators">Shared Variable Operators</h1>
 
 <p>All shared variables are organized as a SharedVariableSet instance. There are operations for reading and writing the shared variable set. We list them in a table:</p>
 
@@ -184,41 +248,51 @@
       <td>Return the array element with index <code>ind</code>. It will return 0 if the array has not been declared.</td>
     </tr>
     <tr>
-      <td>addArray(<em>key</em>, <em>delta</em>)</td>
-      <td>Add an array <code>delta</code> to the array associated with the key.</td>
+      <td>getArrayElements(<em>key</em>, <em>inds</em>)</td>
+      <td>Return array elements with specified indices <code>inds: Array[Int]</code>.</td>
     </tr>
     <tr>
-      <td>addArrayElement (<em>key</em>, <em>ind</em>, <em>delta</em>)</td>
+      <td>addArray(<em>key</em>, <em>delta</em>)</td>
+      <td>Add <code>delta: Array[Double]</code> to the array associated with the key.</td>
+    </tr>
+    <tr>
+      <td>addArrayElement(<em>key</em>, <em>ind</em>, <em>delta</em>)</td>
+      <td>Add <code>delta: Array[Double]</code> to the specified indices <code>inds: Array[Int]</code>. The dimenions of <code>delta</code> and <code>inds</code> should be equal.</td>
+    </tr>
+    <tr>
+      <td>addArrayElements(<em>key</em>, <em>inds</em>, <em>delta</em>)</td>
       <td>Add <code>delta</code> to the array element with index <code>ind</code>.</td>
     </tr>
     <tr>
-      <td>delayedAddArray (<em>key</em>, <em>delta</em>)</td>
+      <td>delayedAddArray(<em>key</em>, <em>delta</em>)</td>
       <td>The same as <code>addArray</code>, but the operation will not be executed until the next time the same element is processed.</td>
     </tr>
     <tr>
-      <td>delayedAddArrayElement (<em>key</em>, <em>delta</em>, <em>delta</em>)</td>
+      <td>delayedAddArrayElement(<em>key</em>, <em>delta</em>, <em>delta</em>)</td>
       <td>The same as <code>addArrayElement</code>, but the operation will not be executed until the next time the same element is processed.</td>
     </tr>
     <tr>
-      <td>multiplyArray (<em>key</em>, <em>gamma</em>)</td>
+      <td>multiplyArray(<em>key</em>, <em>gamma</em>)</td>
       <td>Multiply all elements of the array by a real number <code>gamma</code>. The computation complexity of this operation is <strong>O(1)</strong>, independent of the dimension of the array.</td>
     </tr>
     <tr>
       <td>dontSync(<em>key</em>)</td>
-      <td>The system will not synchronize this variable at the end of the current iteration. It will improve the communication efficiency, but may cause unpredictable consistency issues. Don’t register a variable as <code>dontSync</code> unless you are sure that it will never be used by other partitions. The variable will still be synchronized at later iterations.</td>
+      <td>The system will not synchronize this variable at the next round of synchronization. It will improve the communication efficiency, but may cause unpredictable consistency issues. Don’t register a variable as <code>dontSync</code> unless you are sure that it will never be used by other partitions. The <code>dontSync</code> declaration is only effective at the current iteration.</td>
     </tr>
     <tr>
       <td>dontSyncArray(<em>key</em>)</td>
-      <td>The same as <code>dontSync</code>, but the object is an array-type variable.</td>
+      <td>The same as <code>dontSync</code>, but the object is an array.</td>
     </tr>
   </tbody>
 </table>
 
-<h1 id="stream-process-context">Stream Process Context</h1>
+<p><br /></p>
 
-<p>The Stream Process Context allows the user setting customized properties for the algorithm execution. Given a Stream Process Context object <code>spc</code>, the properties are set by</p>
+<h1 id="splash-configurations">Splash Configurations</h1>
 
-<pre><code>spc = spc.set(propertyName,propertyValue)
+<p>The Splash Configuration class allows the user customizing the algorithm execution. Given a SplashConf instance <code>spc</code>, the properties are set by</p>
+
+<pre><code>spc.set(propertyName,propertyValue)
 </code></pre>
 
 <p>Here is a list of configurable properties:</p>
@@ -227,33 +301,29 @@
   <thead>
     <tr>
       <th>Property Name</th>
-      <th style="text-align: center">Default</th>
+      <th style="text-align: center"> Default Value </th>
       <th>Meaning</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>num.of.thread</td>
+      <td>max.thread.num</td>
       <td style="text-align: center">0</td>
-      <td>The number of parallel threads for algorithm execution. If <code>num.of.thread = 0</code>, then the number of parallel thread is equal to the number of partitions.</td>
+      <td>The maximum number of threads to run the algorithm. If <code>num.of.thread = 0</code>, then the maximum number of threads is the number of partitions.</td>
     </tr>
     <tr>
-      <td>num.of.group</td>
-      <td style="text-align: center">0</td>
-      <td>Indicate the number of groups that Splash clusters the parallel threads. It is a system-level parameter. If <code>num.of.group = 0</code>, then the group number will be automatically chosen.</td>
-    </tr>
-    <tr>
-      <td>num.of.pass.over .local.data</td>
-      <td style="text-align: center">1.0</td>
-      <td>Proportion of local data processed per one call of the <code>run</code> function. If this number is greater than 1, then each thread will take multiple passes over its local dataset before synchronization.</td>
-    </tr>
-    <tr>
-      <td>warmStart</td>
+      <td>auto.thread</td>
       <td style="text-align: center">true</td>
-      <td>If <code>warmStart = true</code>, then at the first time the <code>run</code> function is called, the system will not execute parallel processing immediately. It will begin by running the algorithm sequentially on a small fraction of data as a warm start. This feature can be turned off by setting <code>warmStart = false</code>.</td>
+      <td>If the value is <code>true</code>, then the system will automatically determine the number of threads to run the algorithm. Otherwise, the number of threads will be equal to <code>max.thread.num</code></td>
+    </tr>
+    <tr>
+      <td>data.per.iteration</td>
+      <td style="text-align: center">1.0</td>
+      <td>Proportion of local data processed in each iteration. In each iteration, every local thread goes through <code>data.per.iteration</code> proportion of its partition, then all threads synchronize at the end of the iteration. This proportion cannot be greater than 1. If you want to take multiple passes over the dataset in one iteration, use <code>duplicate</code> or <code>duplicateAndReshuffle</code> to enlarge the dataset.</td>
     </tr>
   </tbody>
 </table>
+
 
   </article>
 

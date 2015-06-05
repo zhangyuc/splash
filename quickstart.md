@@ -7,7 +7,6 @@ weight : 1
 
 We provide a quick guide to developing and running stochastic algorithms using Splash. After reading this section, you may want to look at the [examples]({{site.baseurl}}/example/), or learn about the pre-built [Splash Machine Learning Package]({{site.baseurl}}/mlpackage/).
 
-
 # Install Splash
 
 To install Splash, you need to:
