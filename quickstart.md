@@ -5,7 +5,7 @@ permalink: /quickstart/
 weight : 1
 ---
 
-We provide a quick guide to developing and running stochastic algorithms using Splash. After reading this section, you may want to look at the [examples](splash/example/), or learn about the pre-built [Splash Machine Learning Package](splash/mlpackage/).
+We provide a quick guide to developing and running stochastic algorithms using Splash. After reading this section, you may want to look at the [examples]({{site.baseurl}}/example/), or learn about the pre-built [Splash Machine Learning Package]({{site.baseurl}}/mlpackage/).
 
 # Install Splash
 
@@ -64,7 +64,7 @@ The local variable can be updated by putting a new value:
 localVar.set(key,value)
 {% endhighlight %}
 
-The shared variable must be updated by **transformations**. Splash provides three types of operators for transforming the shared variable: **add**, **delayed-add** and **multiply**. See the [Splash API](splash/api/) section for more information.
+The shared variable must be updated by **transformations**. Splash provides three types of operators for transforming the shared variable: **add**, **delayed-add** and **multiply**. See the [Splash API]({{site.baseurl}}/api/) section for more information.
 
 # Running the Algorithm
 
@@ -94,6 +94,6 @@ It is also possible to MapReduce the Parametrized RDD. For example, by calling
 val loss = paramRdd.map(func).sum()
 {% endhighlight %}
 
-every element in the dataset is mapped by the `func` function. If `func` returns a real number, it will be aggregated across the dataset. This is useful for evaluating the performance of the algorithm. See [Splash API](splash/api/) for more options.
+every element in the dataset is mapped by the `func` function. If `func` returns a real number, it will be aggregated across the dataset. This is useful for evaluating the performance of the algorithm. See [Splash API]({{site.baseurl}}/api/) for more options.
 
 
