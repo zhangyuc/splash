@@ -125,8 +125,13 @@ class TestLinearSGD {
       if(numClasses == 2) new splash.optimization.LogisticGradient()
       else new splash.optimization.MultiClassLogisticGradient(numClasses)
     }
-    val sgd = (new StochasticGradientDescent()).setNumIterations(iters).setStepSize(stepsize)
-      .setDataPerIteration(duplication).setGradient(gradient).setMaxThreadNum(partition).setAutoThread(false)
+    val sgd = (new StochasticGradientDescent())
+      .setGradient(gradient)
+      .setNumIterations(iters)
+      .setStepSize(stepsize)
+      .setDataPerIteration(duplication)
+      .setMaxThreadNum(partition)
+      
     val solution = sgd.optimize(data, Vectors.zeros(dimension*(numClasses-1)))
   }
 }

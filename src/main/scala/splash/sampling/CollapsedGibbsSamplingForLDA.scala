@@ -5,10 +5,10 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.HashPartitioner
 import splash.core._
 
-class WordToken(wordid : Int, wordcount : Int, topicid : Int) extends Serializable {
-  var wordId = wordid
-  var wordCount = wordcount
-  var topicId = topicid 
+class WordToken(initWordId : Int, initWordCount : Int, initTopicId : Int) extends Serializable {
+  var wordId = initWordId
+  var wordCount = initWordCount
+  var topicId = initTopicId 
 }
 
 class CollapsedGibbsSamplingForLDA {
@@ -17,7 +17,7 @@ class CollapsedGibbsSamplingForLDA {
   var maxThreadNum = 0
   var process : ((Int, WordToken), Double, SharedVariableSet, LocalVariableSet ) => Unit = null
   var evalLoss : ((Int, WordToken), SharedVariableSet, LocalVariableSet ) => Double = null
-  private var displayLoss = true
+  private var displayLoss = false
   
   // LDA parameters
   var alpha = 0.0
