@@ -5,7 +5,7 @@ permalink: /example/
 weight : 3
 ---
 
-First, download the [Splash Example package](https://github.com/zhangyuc/splash/blob/master/examples/SplashExample.tar.gz?raw=true) and extract it at any directory. The source codes locate at `/src/main/scala/` The Splash library is included at `/lib/`, so you don't have to download it again. To compile the code, `cd` into the directory where you extract the package and type:
+First, download the [Splash Example package](https://github.com/zhangyuc/splash/blob/master/examples/SplashExample.tar.gz?raw=true) and extract it at any directory. The source codes locate at `/src/main/scala/` The Splash library is included at `/lib/`. This makes Splash in your project classpath and is ready for use. To compile the code, `cd` into the directory where you extract the package and type:
 
 {% highlight bash %}
 sbt package
