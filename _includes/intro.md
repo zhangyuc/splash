@@ -20,6 +20,6 @@ On large-scale datasets, Splash is faster than the existing RDD-based data analy
 <img src="https://raw.githubusercontent.com/zhangyuc/splash/master/images/compare-with-lbfgs.png" width="350">
 </p>
 
-Read the [Quick Start](/quickstart/) to start building your awesome stochastic algorithm!
+Read the [Quick Start](splash/quickstart/) to start building your awesome stochastic algorithm!
 
 

@@ -5,7 +5,7 @@ permalink: /quickstart/
 weight : 1
 ---
 
-We provide a quick guide to developing and running stochastic algorithms using Splash. After reading this section, you may want to look at the [examples](splash/example/), or learn about the pre-built [Splash Machine Learning Package](splash/mlpackage/).
+We provide a quick guide to developing and running stochastic algorithms using Splash. After reading this section, you may want to look at the [examples](/example/), or learn about the pre-built [Splash Machine Learning Package](/mlpackage/).
 
 # Install Splash
 

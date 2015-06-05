@@ -9,9 +9,9 @@
   <title>Quick Start</title>
   <meta name="description" content="">
 
-  <link rel="stylesheet" href="/splash//css/main.css">
-  <link rel="canonical" href="http://zhangyuc.github.io/splash/splash//quickstart/">
-  <link rel="alternate" type="application/rss+xml" title="Splash" href="http://zhangyuc.github.io/splash/splash//feed.xml" />
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="canonical" href="http://zhangyuc.github.io/splash/quickstart/">
+  <link rel="alternate" type="application/rss+xml" title="Splash" href="http://zhangyuc.github.io/splash/feed.xml" />
 </head>
 
 
@@ -21,7 +21,7 @@
 
   <div class="wrapper">
 
-    <a class="site-title" href="/splash//">Splash</a>
+    <a class="site-title" href="/">Splash</a>
 
     <nav class="site-nav">
       <a href="#" class="menu-icon">
@@ -40,19 +40,19 @@
           
         
           
-          <a class="page-link" href="/splash//quickstart/">Quick Start</a>
+          <a class="page-link" href="/quickstart/">Quick Start</a>
           
         
           
-          <a class="page-link" href="/splash//example/">Examples</a>
+          <a class="page-link" href="/example/">Examples</a>
           
         
           
-          <a class="page-link" href="/splash//mlpackage/">ML Package</a>
+          <a class="page-link" href="/mlpackage/">ML Package</a>
           
         
           
-          <a class="page-link" href="/splash//api/">Splash API</a>
+          <a class="page-link" href="/api/">Splash API</a>
           
         
       </div>
@@ -72,7 +72,7 @@
   </header>
 
   <article class="post-content">
-    <p>We provide a quick guide to developing and running stochastic algorithms using Splash. After reading this section, you may want to look at the <a href="/example/">examples</a>, or learn about the pre-built <a href="/mlpackage/">Splash Machine Learning Package</a>.</p>
+    <p>We provide a quick guide to developing and running stochastic algorithms using Splash. After reading this section, you may want to look at the <a href="splash/example/">examples</a>, or learn about the pre-built <a href="splash/mlpackage/">Splash Machine Learning Package</a>.</p>
 
 <h1 id="install-splash">Install Splash</h1>
 
@@ -121,7 +121,7 @@
 
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="n">localVar</span><span class="o">.</span><span class="n">set</span><span class="o">(</span><span class="n">key</span><span class="o">,</span><span class="n">value</span><span class="o">)</span></code></pre></div>
 
-<p>The shared variable must be updated by <strong>transformations</strong>. Splash provides three types of operators for transforming the shared variable: <strong>add</strong>, <strong>delayed-add</strong> and <strong>multiply</strong>. See the <a href="/api/">Splash API</a> section for more information.</p>
+<p>The shared variable must be updated by <strong>transformations</strong>. Splash provides three types of operators for transforming the shared variable: <strong>add</strong>, <strong>delayed-add</strong> and <strong>multiply</strong>. See the <a href="splash/api/">Splash API</a> section for more information.</p>
 
 <h1 id="running-the-algorithm">Running the Algorithm</h1>
 
@@ -145,7 +145,7 @@
 
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">loss</span> <span class="k">=</span> <span class="n">paramRdd</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">func</span><span class="o">).</span><span class="n">sum</span><span class="o">()</span></code></pre></div>
 
-<p>every element in the dataset is mapped by the <code>func</code> function. If <code>func</code> returns a real number, it will be aggregated across the dataset. This is useful for evaluating the performance of the algorithm. See <a href="/api/">Splash API</a> for more options.</p>
+<p>every element in the dataset is mapped by the <code>func</code> function. If <code>func</code> returns a real number, it will be aggregated across the dataset. This is useful for evaluating the performance of the algorithm. See <a href="splash/api/">Splash API</a> for more options.</p>
 
 
   </article>
