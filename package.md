@@ -55,7 +55,13 @@ abstract class Gradient extends Serializable {
 
 {% endhighlight %}
 
-Besides the number of iteration and the stepsize, you are also allowed to configure the Splash system parameters (`maxThreadNum`, `dataPerIteration`, etc.). See the [Splash API]({{site.baseurl}}/api/) section for the meaning of these parameters.
+You can set the following paramters:
+
+- **numIteration**: the number of rounds that SGD runs and synchronizes. 
+- **stepSize**: a scalar value denoting the stepsize of stochastic gradient descent. Although the stepsize of individual iterates will be adaptively chosen by AdaGrad algorithm, they will always be proportional to this parameter.
+- **dataPerIteration**: the proportion of local data processed in each iteration. The default value is `1.0`. By choosing a smaller proportion, the algorithm will synchronize more frequently or terminate more quickly.
+- **maxThreadNum**: the maximum number of thread to run the algorithm. The default value is equal to the number of Parametrized RDD partitions.
+- **setAutoThread**: if the value is `true`, then the number of parallel thread will be automatically chosen by the system but always bounded by **maxThreadNum**. Otherwise, the number of parallel thread will be equal to **maxThreadNum**.
 
 # Collapsed Gibbs Sampling for LDA
 
@@ -83,6 +89,10 @@ val corpusWithNewTopics = (new CollapsedGibbsSamplingForLDA)
 
 {% endhighlight %}
 
-It returns an `RDD[(docId, wordToken)]` with resampled `topicId`. The `setAlphaBeta` takes the [(alpha, beta) hyper-parameters in the LDA model](https://www.cs.princeton.edu/~blei/papers/BleiNgJordan2003.pdf). 
+It returns an `RDD[(docId, wordToken)]` where the `topicId` of each word token has been resampled. You can set the following parameters:
+
+- **numIteration**: the number of times that Collapsed Gibbs Sampling goes through the dataset.
+- **numTopics**: the number of topics in the LDA model.
+- **alphaBeta**: the [(alpha, beta) hyper-parameters](https://www.cs.princeton.edu/~blei/papers/BleiNgJordan2003.pdf in the LDA model.
 
 
