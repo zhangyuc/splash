@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <title>Splash</title>
+  <title>Splash - Distributed Stochastic Learning on Apache Spark</title>
   <meta name="description" content="">
 
   <link rel="stylesheet" href="/css/main.css">
@@ -44,11 +44,11 @@
           
         
           
-          <a class="page-link" href="/example/">Examples</a>
+          <a class="page-link" href="/mlpackage/">ML Package</a>
           
         
           
-          <a class="page-link" href="/mlpackage/">ML Package</a>
+          <a class="page-link" href="/example/">Examples</a>
           
         
           
@@ -74,7 +74,7 @@
   <article class="post-content">
     <h1 id="what-is-stochastic-algorithm">What is Stochastic Algorithm?</h1>
 
-<p><strong>Stochastic algorithm</strong> is a family of algorithms which processes large-scale dataset by sequentially processing its random samples. Because processing a single element is very cheap, the stochastic algorithm can perform many rounds of updates when the batch algorithm performs one update. This makes the stochastic algorithm an efficient approach to learning complicated models from large datasets. Typical examples of stochastic algorithm include:</p>
+<p><strong>Stochastic algorithm</strong> is a family of algorithms which processes a large-scale dataset by sequentially processing its random samples. Because of the computational efficiency of their sequential updates, stochastic algorithms are popular approaches to learning complex models from big data. Typical examples of stochastic algorithm include:</p>
 
 <ul>
   <li><a href="http://en.wikipedia.org/wiki/Stochastic_gradient_descent">Stochastic Gradient Descent (SGD)</a></li>
@@ -85,17 +85,19 @@
   <li><a href="http://research.microsoft.com/en-us/um/people/minka/papers/ep/minka-ep-uai.pdf">Expectation Propagation</a>.</li>
 </ul>
 
+<br>
+
 <h1 id="what-is-splash">What is Splash?</h1>
 
 <p><strong>Splash</strong> is a general-purppose framework for parallelizing stochastic algorithms on multi-node clusters. You can develop any stochastic algorithm using the Splash programming interface without concerning any detail about distribuetd computing. The parallelization is automatic and is very efficient. Splash is built on <a href="http://www.scala-lang.org/">Scala</a> and <a href="https://spark.apache.org/">Apache Spark</a>, so that users can use it to process the <a href="https://spark.apache.org/docs/latest/quick-start.html">Resilient Distributed Datasets (RDD)</a> of Spark.</p>
 
-<p>On large-scale datasets, Splash is faster than the existing RDD-based data analytics tools. For example, to learn a 10-class logistic regression model on the <a href="http://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/multiclass.html#mnist8m">mnist8m dataset</a>, The SGD algoritihm implemented via Splash is 25x faster than <a href="https://spark.apache.org/docs/latest/mllib-optimization.html#l-bfgs">MLlib’s L-BFGS</a> and 75x faster than <a href="https://spark.apache.org/docs/latest/mllib-optimization.html#gradient-descent-and-stochastic-gradient-descent">MLlib’s mini-batch SGD</a> for achieving the same logistic loss. All algorithms run on a 64-core cluster.</p>
+<p>On large-scale datasets, Splash could be substantially faster than the existing RDD-based data analytics packages. For example, to learn a 10-class logistic regression model on the <a href="http://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/multiclass.html#mnist8m">mnist8m dataset</a>, The SGD algoritihm implemented via Splash is 25x faster than <a href="https://spark.apache.org/docs/latest/mllib-optimization.html#l-bfgs">MLlib’s L-BFGS</a> and 75x faster than <a href="https://spark.apache.org/docs/latest/mllib-optimization.html#gradient-descent-and-stochastic-gradient-descent">MLlib’s mini-batch SGD</a> for achieving the same logistic loss. All algorithms run on a 64-core cluster.</p>
 
 <p align="center">
 <img src="https://raw.githubusercontent.com/zhangyuc/splash/master/images/compare-with-lbfgs.png" width="350" />
 </p>
 
-<p>Read the <a href="splash/quickstart/">Quick Start</a> to start building your awesome stochastic algorithm!</p>
+<p>Read the <a href="quickstart/">Quick Start</a> to start building your own stochastic algorithm!</p>
 
   </article>
 
@@ -109,7 +111,7 @@
   <div class="wrapper">
 
       <div class="footer-col">
-        <p class="text">Website maintained by <a href="http://www.cs.berkeley.edu/~yuczhang/">Yuchen Zhang</a> at UC Berkeley.</p>
+        <p class="text">Website maintained by <a href="http://www.cs.berkeley.edu/~yuczhang/">Yuchen Zhang</a>.</p>
       </div>
 
   </div>
