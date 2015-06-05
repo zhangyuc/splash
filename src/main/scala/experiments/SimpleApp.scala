@@ -9,7 +9,7 @@ object SimpleApp {
   def main(args: Array[String]) {
     val prop = new Properties()
     prop.load(new FileInputStream(args(0)))
-    val OptData = "covtype"
+    val OptData = "mnist"
     val NlpData = "nytimes"
     
     val root_path = prop.getProperty("root_path")

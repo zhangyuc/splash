@@ -25,7 +25,7 @@ abstract class Gradient extends Serializable {
   def compute(data: Vector, label: Double, weights: Vector): (Vector, Double)
 }
 
-abstract class LinearModelGradient extends Gradient {
+abstract class BinaryLinearModelGradient extends Gradient {
   def requestWeightIndices(data: Vector): Array[Int] = {
     data match {
       case dd : DenseVector => null
@@ -35,7 +35,7 @@ abstract class LinearModelGradient extends Gradient {
   }
 }
 
-class LogisticGradient extends LinearModelGradient{
+class LogisticGradient extends BinaryLinearModelGradient{
   def compute(data: Vector, label: Double, weights: Vector): (Vector, Double) = {
     val margin = -1.0 * dot(data, weights)
     val multiplier = (1.0 / (1.0 + math.exp(margin))) - label
@@ -132,6 +132,7 @@ class MultiClassLogisticGradient(numClasses: Int) extends Gradient{
       while(j < n){
         deltaValues(base+j) = multiplier * dataValues(j)
         j += 1
+        
       }
     }
     var loss = if (label > 0.0) math.log1p(sum) - marginY else math.log1p(sum)
@@ -142,7 +143,7 @@ class MultiClassLogisticGradient(numClasses: Int) extends Gradient{
   }
 }
 
-class HingeGradient extends LinearModelGradient {
+class HingeGradient extends BinaryLinearModelGradient {
   def compute(data: Vector, label: Double, weights: Vector): (Vector, Double) = {
     val dotProduct = dot(data, weights)
     val labelScaled = 2 * label - 1.0
@@ -154,7 +155,7 @@ class HingeGradient extends LinearModelGradient {
   }
 }
 
-class LeastSquaresGradient extends LinearModelGradient {
+class LeastSquaresGradient extends BinaryLinearModelGradient {
   def compute(data: Vector, label: Double, weights: Vector): (Vector, Double) = {
     val diff = dot(data, weights) - label
     val loss = diff * diff / 2.0

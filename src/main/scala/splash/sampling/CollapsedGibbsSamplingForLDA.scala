@@ -16,7 +16,7 @@ class CollapsedGibbsSamplingForLDA {
   var dataPerIteration = 1.0
   var process : ((Int, WordToken), Double, SharedVariableSet, LocalVariableSet ) => Unit = null
   var evalLoss : ((Int, WordToken), SharedVariableSet, LocalVariableSet ) => Double = null
-  private var displayLoss = false
+  var printDebugInfo = false
   
   // LDA parameters
   var alpha = 0.0
@@ -38,7 +38,7 @@ class CollapsedGibbsSamplingForLDA {
     
     val dtLength = numDocuments * numTopics + numDocuments
     val wtLength = vocabSize * numTopics + numTopics
-    if(displayLoss){
+    if(printDebugInfo){
       println("numDocuments = " + numDocuments)
       println("vocabSize = " + vocabSize)
       println("n = " + n)
@@ -81,7 +81,7 @@ class CollapsedGibbsSamplingForLDA {
     val spc = (new SplashConf).set("auto.thread", false) 
     for( i <- 0 until this.iters ){
       paramRdd.run(spc)
-      if(displayLoss){
+      if(printDebugInfo){
         val loss = math.exp( paramRdd.map(evalLoss).sum() / n )
         println("%5.3f\t%5.8f\t".format(paramRdd.totalTimeEllapsed, loss) + paramRdd.lastIterationThreadNumber)
       }
@@ -184,6 +184,11 @@ class CollapsedGibbsSamplingForLDA {
   
   def setDataPerIteration(dataPerIteration: Double) = {
     this.dataPerIteration = dataPerIteration
+    this
+  }
+  
+  def setPrintDebugInfo(printDebugInfo : Boolean) = {
+    this.printDebugInfo = printDebugInfo
     this
   }
 }

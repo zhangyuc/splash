@@ -13,7 +13,7 @@ class StochasticGradientDescent {
   var autoThread = true
   var process : ((Double, Vector), Double, SharedVariableSet, LocalVariableSet ) => Unit = null
   var evalLoss : ((Double, Vector), SharedVariableSet, LocalVariableSet ) => Double = null
-  private var displayLoss = false
+  var printDebugInfo = false
   
   def optimize(data: RDD[(Double, Vector)], initialWeights: Vector) = {
     val numPartitions = data.partitions.length
@@ -47,7 +47,7 @@ class StochasticGradientDescent {
     val spc = (new SplashConf).set("data.per.iteration", math.min(1, dataPerIteration)).set("max.thread.num", this.maxThreadNum).set("auto.thread", this.autoThread)
     for( i <- 0 until this.iters ){
       paramRdd.run(spc)
-      if(displayLoss){
+      if(printDebugInfo){
         val loss = paramRdd.map(evalLoss).sum() / n
         println("%5.3f\t%5.8f\t".format(paramRdd.totalTimeEllapsed, loss) + paramRdd.lastIterationThreadNumber)
       }
@@ -55,7 +55,7 @@ class StochasticGradientDescent {
     Vectors.dense(paramRdd.getSharedVariable().getArray("w"))
   }
   
-  def setProcessFunction(){
+  private def setProcessFunction(){
     val gradientObj = this.gradient
     val dimension = this.dimension
     val stepsize = this.stepsize
@@ -109,7 +109,7 @@ class StochasticGradientDescent {
           val s = sharedVar.getArrayElements("s", indices)
           k = 0
           while(k < n){
-            values(k) *= - actual_stepsize / math.sqrt(s(k))
+            values(k) *= - actual_stepsize / math.sqrt(s(k) + 1e-16)
             k += 1
           }
           sharedVar.addArrayElements("w", indices, values)
@@ -161,6 +161,11 @@ class StochasticGradientDescent {
   
   def setAutoThread(autoThread : Boolean) = {
     this.autoThread = autoThread
+    this
+  }
+  
+  def setPrintDebugInfo(printDebugInfo : Boolean) = {
+    this.printDebugInfo = printDebugInfo
     this
   }
 }

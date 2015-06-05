@@ -36,6 +36,7 @@ class TestLDA {
       .setNumTopics(numTopics)
       .setAlphaBeta((alpha,beta))
       .setNumIterations(1000)
+      .setPrintDebugInfo(true)
       .sample(corpusWithRandomTopics)
   }
 }

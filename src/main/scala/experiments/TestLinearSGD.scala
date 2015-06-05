@@ -10,7 +10,7 @@ class TestLinearSGD {
   def train(filename:String){
     ////////////////////////// start preparing data ////////////////////////////
     val regParam = 0
-    val iters = 1000
+    val iters = 10
     val partition = 64
     var numClasses = 2
     
@@ -32,10 +32,10 @@ class TestLinearSGD {
       duplication = 1
       stepsize = 0.3
     }
-    if(filename.endsWith("mnist8m.txt")){
+    if(filename.endsWith("mnist8m.txt") || filename.endsWith("mnist.txt")){
       duplication = 0.25
       numClasses = 10
-      stepsize = 0.3
+      stepsize = 0.5
     }
     if(partition == 1){
       duplication = 1
@@ -77,9 +77,9 @@ class TestLinearSGD {
     println("number of samples = " + n)
     println("dimension = " + dimension)
     ////////////////////////// finished preparing data ////////////////////////////
-    val mllib_data = data
+    /*val mllib_data = data
     mllib_data.count()
-    var startTime = 0.0
+    var startTime = 0.0*/
     
     /*println("MLLib LBFGS: ")
     startTime = (new Date).getTime
@@ -99,7 +99,7 @@ class TestLinearSGD {
     }*/
     
     
-    println("MLLib SGD: ")
+    /*println("MLLib SGD: ")
     val miniBatchFraction = 0.01
     val sgd_iter = 10000
     val sgd_stepsize = 1000
@@ -117,7 +117,7 @@ class TestLinearSGD {
     val mllib_time = ((new Date).getTime - startTime) / 1000
     for(i <- 0 until loss_sgd.length){
       println("%5.3f\t%5.8f".format(mllib_time * (i+1) / loss_sgd.length, loss_sgd(i)))
-    }
+    }*/
     // test splash /////////////////////////////////////////////////
     
     println("Splash: ")
@@ -131,6 +131,8 @@ class TestLinearSGD {
       .setStepSize(stepsize)
       .setDataPerIteration(duplication)
       .setMaxThreadNum(partition)
+      .setAutoThread(false)
+      .setPrintDebugInfo(true)
       
     val solution = sgd.optimize(data, Vectors.zeros(dimension*(numClasses-1)))
   }
