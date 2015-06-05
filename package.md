@@ -63,6 +63,8 @@ You can set the following paramters:
 - **maxThreadNum**: the maximum number of thread to run the algorithm. The default value is equal to the number of Parametrized RDD partitions.
 - **autoThread**: if the value is `true`, then the number of parallel thread will be automatically chosen by the system but always bounded by **maxThreadNum**. Otherwise, the number of parallel thread will be equal to **maxThreadNum**.
 
+<br>
+
 # Collapsed Gibbs Sampling for LDA
 
 The **splash.sampling** package implements the Collapsed Gibbs Sampling algorithm for learning the [Latent Dirichlet Allocation (LDA)](http://en.wikipedia.org/wiki/Latent_Dirichlet_allocation) model. To use this package, the dataset should take the form `RDD[(docId, wordToken)]`. The `docId` is the ID of the document, the `wordToken` is represents a word token in this document, taking the form
