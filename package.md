@@ -2,7 +2,7 @@
 layout: page
 title: ML Package
 permalink: /mlpackage/
-weight : 3
+weight : 2
 ---
 
 Splash implements classical stochastic algorithms for machine learning. This package will grow as the Splash version evolves.
