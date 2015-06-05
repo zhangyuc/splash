@@ -13,7 +13,6 @@ class WordToken(initWordId : Int, initWordCount : Int, initTopicId : Int) extend
 
 class CollapsedGibbsSamplingForLDA {
   var iters = 10
-  var dataPerIteration = 1.0
   var process : ((Int, WordToken), Double, SharedVariableSet, LocalVariableSet ) => Unit = null
   var evalLoss : ((Int, WordToken), SharedVariableSet, LocalVariableSet ) => Double = null
   var printDebugInfo = false
@@ -78,7 +77,7 @@ class CollapsedGibbsSamplingForLDA {
     paramRdd.process_func = this.process
     paramRdd.evaluate_func = this.evalLoss
     
-    val spc = (new SplashConf).set("auto.thread", false) 
+    val spc = (new SplashConf).set("auto.thread", false)
     for( i <- 0 until this.iters ){
       paramRdd.run(spc)
       if(printDebugInfo){
@@ -180,11 +179,6 @@ class CollapsedGibbsSamplingForLDA {
   def setNumIterations(iters: Int) = {
     this.iters = iters 
     this 
-  }
-  
-  def setDataPerIteration(dataPerIteration: Double) = {
-    this.dataPerIteration = dataPerIteration
-    this
   }
   
   def setPrintDebugInfo(printDebugInfo : Boolean) = {
