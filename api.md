@@ -31,7 +31,7 @@ setLossFunction(*func*) | Set a loss function for the stochastic algorithm. The 
 run(*spc*) | Use the data processing function to process the dataset. `spc` is a `SplashConf` object. It specifies the hyper-parameters that the system needs.
 duplicateAndReshuffle(*n*) | Make `n-1` copies of every element and reshuffle them across partitions. This will enlarge the dataset by a factor of `n`. Parallel threads can reduce communication costs by passing a larger local dataset.
 duplicate(*n*) | Make `n-1` copies of every element without reshuffling.
-reshuffle(*n*) | Reshuffle all elements across partitions. 
+reshuffle(*n*) | Reshuffle all elements across partitions. If you dataset has not been shuffled, this operation is recommended at the creation of the Parametrized RDD.
 
 <br>
 
@@ -84,7 +84,7 @@ Here is a list of configurable properties:
 
 Property Name | &nbsp;Default&nbsp;Value&nbsp; | Meaning
 --- | :---: | ---
-max.thread.num | 0 | The maximum number of threads to run the algorithm. If `num.of.thread = 0`, then the maximum number of threads is the number of partitions.
-auto.thread | true | If the value is `true`, then the system will automatically determine the number of threads to run the algorithm. Otherwise, the number of threads will be equal to `max.thread.num`
+max.thread.num | 0 | The maximum number of threads to run the algorithm. If `max.thread.num = 0`, then the maximum number of threads is the number of partitions.
+auto.thread | true | If the value is `true`, then the system will automatically determine the number of threads to run the algorithm. Otherwise, the number of threads will be equal to the maximum number of threads.
 data.per.iteration | 1.0 | Proportion of local data processed in each iteration. In each iteration, every local thread goes through `data.per.iteration` proportion of its partition, then all threads synchronize at the end of the iteration. This proportion cannot be greater than 1. If you want to take multiple passes over the dataset in one iteration, use `duplicate` or `duplicateAndReshuffle` to enlarge the dataset.
 
