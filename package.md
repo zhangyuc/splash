@@ -12,7 +12,7 @@ Splash implements classical stochastic algorithms for machine learning:
 
 # Stocahstic Gradient Descent
 
-The **splash.optimization** package implements the [Adaptive SGD](http://www.magicbroom.info/Papers/DuchiHaSi10.pdf) algorithm. To use this package, the dataset should be label-feature pairs stored as `data: RDD[Double, Vector]`. The label should be {0,1,2,...} for classification problems. The `Vector` is defined in [the MLlib package](https://spark.apache.org/docs/1.0.0/api/scala/index.html#org.apache.spark.mllib.linalg.Vector). Running SGD is straightforward:
+The **splash.optimization** package implements the [AdaGrad SGD](http://www.magicbroom.info/Papers/DuchiHaSi10.pdf) algorithm. To use this package, the dataset should be label-feature pairs stored as `data: RDD[Double, Vector]`. The label should be {0,1,2,...} for classification problems. The `Vector` is defined in [the MLlib package](https://spark.apache.org/docs/1.0.0/api/scala/index.html#org.apache.spark.mllib.linalg.Vector). Running SGD is straightforward:
 
 {% highlight scala %}
 
@@ -58,7 +58,7 @@ abstract class Gradient extends Serializable {
 You can set the following paramters:
 
 - **numIteration**: the number of rounds that SGD runs and synchronizes. 
-- **stepSize**: a scalar value denoting the stepsize of stochastic gradient descent. Although the stepsize of individual iterates will be adaptively chosen by AdaGrad algorithm, they will always be proportional to this parameter.
+- **stepSize**: a scalar value denoting the stepsize of stochastic gradient descent. Although the stepsize of individual iterates are adaptively chosen by AdaGrad, they will always be proportional to this parameter.
 - **dataPerIteration**: the proportion of local data processed in each iteration. The default value is `1.0`. By choosing a smaller proportion, the algorithm will synchronize more frequently or terminate more quickly.
 - **maxThreadNum**: the maximum number of thread to run the algorithm. The default value is equal to the number of Parametrized RDD partitions.
 - **autoThread**: if the value is `true`, then the number of parallel thread will be automatically chosen by the system but always bounded by **maxThreadNum**. Otherwise, the number of parallel thread will be equal to **maxThreadNum**.
