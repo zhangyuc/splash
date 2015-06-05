@@ -4,7 +4,7 @@ layout: page
 
 <h1 id="what-is-stochastic-algorithm">What is Stochastic Algorithm?</h1>
 
-<p><strong>Stochastic algorithm</strong> is a family of algorithms which processes large-scale dataset by sequentially processing its random samples. Because processing a single element is very cheap, the stochastic algorithm can perform many rounds of updates when the batch algorithm performs one update. This makes the stochastic algorithm an efficient approach to learning complicated models from large datasets. Typical examples of stochastic algorithm include:</p>
+<p><strong>Stochastic algorithm</strong> is a family of algorithms which processes large-scale dataset by sequentially processing its random samples. They are efficient approach to learning complicated models from large datasets. Typical examples of stochastic algorithm include:</p>
 
 <ul>
   <li><a href="http://en.wikipedia.org/wiki/Stochastic_gradient_descent">Stochastic Gradient Descent (SGD)</a></li>
@@ -25,4 +25,4 @@ layout: page
 <img src="https://raw.githubusercontent.com/zhangyuc/splash/master/images/compare-with-lbfgs.png" width="350" />
 </p>
 
-<p>Read the <a href="splash/quickstart/">Quick Start</a> to start building your awesome stochastic algorithm!</p>
+<p>Read the <a href="quickstart/">Quick Start</a> to start building your awesome stochastic algorithm!</p>
