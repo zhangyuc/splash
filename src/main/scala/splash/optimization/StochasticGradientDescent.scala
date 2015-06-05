@@ -16,7 +16,8 @@ class StochasticGradientDescent {
   private var displayLoss = false
   
   def optimize(data: RDD[(Double, Vector)], initialWeights: Vector) = {
-    val paramRdd = new ParametrizedRDD(data)
+    val numPartitions = data.partitions.length
+    val paramRdd = new ParametrizedRDD(data.repartition(numPartitions))
     if(math.ceil(dataPerIteration).toInt > 1){
       paramRdd.duplicateAndReshuffle( math.ceil(dataPerIteration).toInt )
     }
@@ -43,7 +44,7 @@ class StochasticGradientDescent {
     paramRdd.process_func = this.process
     paramRdd.evaluate_func = this.evalLoss
     
-    val spc = (new SplashConf).set("data.per.iteration", math.min(1, dataPerIteration)).set("max.thread.number", this.maxThreadNum).set("auto.thread", this.autoThread)
+    val spc = (new SplashConf).set("data.per.iteration", math.min(1, dataPerIteration)).set("max.thread.num", this.maxThreadNum).set("auto.thread", this.autoThread)
     for( i <- 0 until this.iters ){
       paramRdd.run(spc)
       if(displayLoss){

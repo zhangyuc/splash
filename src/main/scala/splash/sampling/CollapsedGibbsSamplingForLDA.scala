@@ -14,7 +14,6 @@ class WordToken(initWordId : Int, initWordCount : Int, initTopicId : Int) extend
 class CollapsedGibbsSamplingForLDA {
   var iters = 10
   var dataPerIteration = 1.0
-  var maxThreadNum = 0
   var process : ((Int, WordToken), Double, SharedVariableSet, LocalVariableSet ) => Unit = null
   var evalLoss : ((Int, WordToken), SharedVariableSet, LocalVariableSet ) => Double = null
   private var displayLoss = false
@@ -185,11 +184,6 @@ class CollapsedGibbsSamplingForLDA {
   
   def setDataPerIteration(dataPerIteration: Double) = {
     this.dataPerIteration = dataPerIteration
-    this
-  }
-  
-  def setMaxThreadNum(maxThreadNum: Int) = {
-    this.maxThreadNum = maxThreadNum
     this
   }
 }

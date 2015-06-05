@@ -6,7 +6,7 @@ class SplashConf {
   var autoThread = true
   
   def set(key:String, value:String) = {
-    if(key.equals("max.thread.number")){
+    if(key.equals("max.thread.num")){
       maxThreadNum = value.toInt
     }
     if(key.equals("data.per.iteration")){
@@ -19,7 +19,7 @@ class SplashConf {
   }
   
   def set(key:String, value:Double) : SplashConf = {
-    if(key.equals("max.thread.number")){
+    if(key.equals("max.thread.num")){
       maxThreadNum = value.toInt
     }
     if(key.equals("data.per.iteration")){
