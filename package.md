@@ -93,6 +93,6 @@ It returns an `RDD[(docId, wordToken)]` where the `topicId` of each word token h
 
 - **numIteration**: the number of times that Collapsed Gibbs Sampling goes through the dataset.
 - **numTopics**: the number of topics in the LDA model.
-- **alphaBeta**: the [(alpha, beta) hyper-parameters](https://www.cs.princeton.edu/~blei/papers/BleiNgJordan2003.pdf in the LDA model.
+- **alphaBeta**: the [(alpha, beta) hyper-parameters](https://www.cs.princeton.edu/~blei/papers/BleiNgJordan2003.pdf) in the LDA model.
 
 
