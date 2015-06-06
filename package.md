@@ -83,6 +83,8 @@ All IDs should be integers starting from zero. The Collapsed Gibbs Sampling algo
 
 {% highlight scala %}
 
+import splash.sampling._
+
 val corpusWithNewTopics = (new CollapsedGibbsSamplingForLDA)
   .setNumTopics(100)
   .setAlphaBeta((0.1,0.01))
