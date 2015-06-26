@@ -12,7 +12,7 @@ Splash implements classical stochastic algorithms for machine learning:
 
 # Stocahstic Gradient Descent
 
-The **splash.optimization** package implements the [AdaGrad SGD](http://www.magicbroom.info/Papers/DuchiHaSi10.pdf) algorithm. To use this package, the dataset should be label-feature pairs stored as `data: RDD[Double, Vector]`. The label should be {0,1,2,...} for classification problems. The `Vector` is defined in [the MLlib package](https://spark.apache.org/docs/1.0.0/api/scala/index.html#org.apache.spark.mllib.linalg.Vector). Running SGD is straightforward:
+The **splash.optimization** package implements the [AdaGrad SGD](http://www.magicbroom.info/Papers/DuchiHaSi10.pdf) algorithm. To use this package, the dataset should be label-feature pairs stored as `data: RDD[Double, Vector]`. The label should be {0,1,2,...} for classification problems. The `Vector` is defined in [the MLlib package](https://spark.apache.org/docs/1.0.0/api/scala/index.html#org.apache.spark.mllib.linalg.Vector). Call the `optimize` method to start running the algorithm:
 
 {% highlight scala %}
 
@@ -57,7 +57,7 @@ abstract class Gradient extends Serializable {
 
 You can set the following paramters:
 
-- **numIteration**: the number of rounds that SGD runs and synchronizes. 
+- **numIterations**: the number of rounds that SGD runs and synchronizes. 
 - **stepSize**: a scalar value denoting the stepsize of stochastic gradient descent. Although the stepsize of individual iterates are adaptively chosen by AdaGrad, they will always be proportional to this parameter.
 - **dataPerIteration**: the proportion of local data processed in each iteration. The default value is `1.0`. By choosing a smaller proportion, the algorithm will synchronize more frequently or terminate more quickly.
 - **maxThreadNum**: the maximum number of thread to run the algorithm. The default value is equal to the number of Parametrized RDD partitions.
@@ -79,7 +79,7 @@ class WordToken(initWordId : Int, initWordCount : Int, initTopicId : Int) extend
 
 {% endhighlight %}
 
-Either the `docId`, `wordId` or `topicId` should be integers starting from zero. The Collapsed Gibbs Sampling algorithm resamples the `topicId` for each word. Call the `sample` method to start running the algorithm:
+`docId`, `wordId` and `topicId` should be integers starting from zero. The Collapsed Gibbs Sampling algorithm resamples the `topicId` for each word. Call the `sample` method to start running the algorithm:
 
 {% highlight scala %}
 
