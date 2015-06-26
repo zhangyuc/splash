@@ -67,7 +67,7 @@ You can set the following paramters:
 
 # Collapsed Gibbs Sampling for LDA
 
-The **splash.sampling** package implements the Collapsed Gibbs Sampling algorithm for learning the [Latent Dirichlet Allocation (LDA)](http://en.wikipedia.org/wiki/Latent_Dirichlet_allocation) model. To use this package, the dataset should take the form `RDD[(docId, wordToken)]`. The `docId` is the ID of the document, the `wordToken` is represents a word token in this document, taking the form
+The **splash.sampling** package implements the Collapsed Gibbs Sampling algorithm for learning the [Latent Dirichlet Allocation (LDA)](http://en.wikipedia.org/wiki/Latent_Dirichlet_allocation) model. To use this package, the dataset should be an instance of `RDD[(docId, wordToken)]`. The `docId` is the ID of the document, the `wordToken` represents a word token in the document. It takes the form
 
 {% highlight scala %}
 
@@ -79,7 +79,7 @@ class WordToken(initWordId : Int, initWordCount : Int, initTopicId : Int) extend
 
 {% endhighlight %}
 
-All IDs should be integers starting from zero. The Collapsed Gibbs Sampling algorithm resamples the `topicId` for each word. Running it is straightforward:
+Either the `docId`, `wordId` or `topicId` should be integers starting from zero. The Collapsed Gibbs Sampling algorithm resamples the `topicId` for each word. Call the `sample` method to start running the algorithm:
 
 {% highlight scala %}
 
@@ -93,10 +93,10 @@ val corpusWithNewTopics = (new CollapsedGibbsSamplingForLDA)
 
 {% endhighlight %}
 
-It returns an `RDD[(docId, wordToken)]` where the `topicId` of each word token has been resampled. You can set the following parameters:
+The `sample` method returns an `RDD[(docId, wordToken)]` object in which the topic of each word token has been resampled. You can set the following parameters:
 
-- **numIteration**: the number of times that Collapsed Gibbs Sampling goes through the dataset.
-- **numTopics**: the number of topics in the LDA model.
-- **alphaBeta**: the [(alpha, beta) hyper-parameters](https://www.cs.princeton.edu/~blei/papers/BleiNgJordan2003.pdf) in the LDA model.
+- **numIterations**: the number of times that Collapsed Gibbs Sampling goes through the dataset.
+- **numTopics**: the number of topics of the LDA model.
+- **alphaBeta**: the [(alpha, beta) hyper-parameters](https://www.cs.princeton.edu/~blei/papers/BleiNgJordan2003.pdf) of the LDA model.
 
 

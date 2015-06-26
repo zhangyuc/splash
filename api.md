@@ -12,7 +12,7 @@ weight : 4
 
 # Parametrized RDD Operators
 
-The Parametrized RDD provides a similar set of operators supported by Spark RDD. Since the Parametrized RDD maintains local variables and shared variables, there are additional operators manipulating these data structures.
+The Parametrized RDD provides a similar set of operators supported by Spark RDD. Since the Parametrized RDD maintains local variables and shared variables, there are operators manipulating the data structure.
 
  Operator | Meaning
   --- | ---
@@ -49,7 +49,7 @@ toArray() | Convert the variable set to an array of key-value pairs.
 
 # Shared Variable Operators
 
-All shared variables are organized as a SharedVariableSet instance. There are operations for reading and writing the shared variable set. We list them in a table:
+The shared variables are organized as a SharedVariableSet instance. The supported operators are:
 
  Operator | Meaning
   --- | ---

@@ -19,7 +19,7 @@ layout: frontpage
 
 <h1 id="what-is-splash">What is Splash</h1>
 
-<p>Traditionally, stochastic algorithms are difficult to parallelize due to their sequential nature. <strong>Splash</strong> is a general-purpose framework for parallelizing stochastic algorithms on multi-node clusters. You can develop any stochastic algorithm using the Splash programming interface without knowing any detail about distributed computing. The parallelization is automatic and is communication efficient. Splash is built on <a href="http://www.scala-lang.org/">Scala</a> and <a href="https://spark.apache.org/">Apache Spark</a>, so that you can employ it to process the <a href="https://spark.apache.org/docs/latest/quick-start.html">Resilient Distributed Datasets (RDD)</a>.</p>
+<p>Traditionally, stochastic algorithms are difficult to parallelize due to their sequential nature. <strong>Splash</strong> is a general framework for parallelizing stochastic algorithms on multi-node clusters. You can develop any stochastic algorithm using the Splash programming interface without knowing any detail about distributed computing. The parallelization is automatic and is communication efficient. Splash is built on <a href="http://www.scala-lang.org/">Scala</a> and <a href="https://spark.apache.org/">Apache Spark</a>, so that you can employ it to process the <a href="https://spark.apache.org/docs/latest/quick-start.html">Resilient Distributed Datasets (RDD)</a>.</p>
 
 <p>On large-scale datasets, the algorithm developed via Splash can be substantially faster than existing Spark-based data analytics packages. For example, to learn a 10-class logistic regression model on the <a href="http://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/multiclass.html#mnist8m">mnist8m dataset</a>, The SGD implemented via Splash is 25x faster than <a href="https://spark.apache.org/docs/latest/mllib-optimization.html#l-bfgs">MLlib’s L-BFGS</a> and 75x faster than <a href="https://spark.apache.org/docs/latest/mllib-optimization.html#gradient-descent-and-stochastic-gradient-descent">MLlib’s mini-batch SGD</a> for achieving the same logistic loss. All algorithms run on a 64-core cluster.</p>
 
@@ -27,6 +27,8 @@ layout: frontpage
 <img src="https://raw.githubusercontent.com/zhangyuc/splash/master/images/compare-with-lbfgs.png" width="400" />
 </p>
 
-<p>Read the <a href="quickstart/">Quick Start</a> to start building your own stochastic algorithm, or view the source code <a href="https://github.com/zhangyuc/splash/tree/master">here</a>.</p>
+<p>Read the <a href="quickstart/">Quick Start</a> to start building your own stochastic algorithm, or view the source code <a href="https://github.com/zhangyuc/splash/tree/master">here</a>.
+To learn more details about the mechanism of Splash, please read <a href="http://arxiv.org/abs/1506.07552">our paper</a>.
+</p>
 
 
