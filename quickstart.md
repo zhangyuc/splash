@@ -35,7 +35,7 @@ val paramRdd = new ParametrizedRDD(rdd)
 
 where `rdd` is the RDD that holds your dataset. 
 
-# Set-up Data Processing Function
+# Set Up the Data Processing Function
 
 To execute the algorithm, set a data processing function `process` for the dataset by invoking
 
