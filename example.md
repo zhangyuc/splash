@@ -5,13 +5,13 @@ permalink: /example/
 weight : 3
 ---
 
-First, download the [Splash Example package](https://github.com/zhangyuc/splash/blob/master/examples/SplashExample.tar.gz?raw=true) and extract it at any directory. The source code locates at `/src/main/scala/`. The Splash library is included at `/lib/`, which puts Splash in your project classpath. To compile the code, `cd` into the directory where you extract the package and type:
+First, download the [Splash Example package](https://github.com/zhangyuc/splash/blob/master/examples/SplashExample.tar.gz?raw=true) and extract it at any directory. The source code is located at `/src/main/scala/`. The Splash library is included at `/lib/`, which puts Splash in your project classpath. To compile the code, `cd` into the directory where you extract the package and type:
 
 {% highlight bash %}
 sbt package
 {% endhighlight %}
 
-It generates a jar file at `./target/scala-2.10/splashexample.jar`. To run the code, submit this jar file as a Spark job:
+This generates a jar file at `./target/scala-2.10/splashexample.jar`. To run the code, submit this jar file as a Spark job:
 
 {% highlight bash %}
 YOUR_SPARK_HOME/bin/spark-submit --class ExampleName \
@@ -22,14 +22,14 @@ YOUR_SPARK_HOME/bin/spark-submit --class ExampleName \
 
 Here, **YOUR_SPARK_HOME** should be replaced by the directory that Spark is installed; **ExampleName** should be replaced by `DocumentStatistics`, `SplashOptimization` or `LogisticRegression`, depending on the example you want to run. The file `splash-0.1.0.jar` is the Splash library and `splashexample.jar` is the compiled code to be executed. The argument `data/covtype.txt` stands for the location of the data file. The result is written to `output.txt`.
 
-Hee is a list of examples:
+Here is a list of examples:
 
 * TOC
 {:toc}
 
 # Document Statistics
 
-The Document Statistics example computes the word statistics of a document. The data processing function reads a weighted `line` form the document to update the number of `lines`, `words` and `characters` through a shared variable `sharedVar`. The `weight` argument tells the algorithm that this line appears `weight` times in the current observation.
+The Document Statistics example computes the word statistics of a document. The data processing function reads a weighted `line` from the document to update the number of `lines`, `words` and `characters` through a shared variable `sharedVar`. The `weight` argument tells the algorithm that this line appears `weight` times in the current observation.
 
 {% highlight scala %}
 import org.apache.spark.{SparkConf,SparkContext}
@@ -77,7 +77,7 @@ On the [mnist8m dataset](http://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/
 
 # SGD for Logistic Regression
 
-We also provide a bare-hand Logistic Regression implementation using the Splash programming interface. It gives you a concrete idea of how the data processing function can be implemented:
+We also provide a bare-hands Logistic Regression implementation using the Splash programming interface. This gives you a concrete idea of how the data processing function can be implemented:
 
 {% highlight scala %}
 val process = (elem: LabeledPoint, weight: Double, sharedVar : SharedVariableSet,  localVar: LocalVariableSet) => {
@@ -117,6 +117,6 @@ val process = (elem: LabeledPoint, weight: Double, sharedVar : SharedVariableSet
 
 {% endhighlight %}
 
-The above code uses multiple operators on the shared variable. The **get** and **getArrayElements** method returns the variable values. The **multiplyArray** method scales the whole array by a constant. The **addArrayElements** method adds a `delta` vector to a subset of coordinates. See the full code base for more details.
+The above code uses multiple operators on the shared variable. The **get** and **getArrayElements** methods return the variable values. The **multiplyArray** method scales the whole array by a constant. The **addArrayElements** method adds a `delta` vector to a subset of coordinates. See the full code base for more details.
 
 

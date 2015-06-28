@@ -19,7 +19,7 @@ layout: frontpage
 
 <h1 id="what-is-splash">What is Splash?</h1>
 
-<p>Stochastic learning algorithms are generally defined as sequential procedures and as such they can be difficult to parallelize. <strong>Splash</strong> is a general-purpose framework for parallelizing stochastic learning algorithms on multi-node clusters. You can develop a stochastic algorithm using the Splash programming interface without concern about issues of distributed computing. The parallelization is automatic and it is communication efficient. Splash is built on <a href="http://www.scala-lang.org/">Scala</a> and <a href="https://spark.apache.org/">Apache Spark</a>, so that you can employ it to process <a href="https://spark.apache.org/docs/latest/quick-start.html">Resilient Distributed Datasets (RDD)</a>.</p>
+<p>Stochastic learning algorithms are generally defined as sequential procedures and as such they can be difficult to parallelize. <strong>Splash</strong> is a general-purpose framework for parallelizing stochastic learning algorithms on multi-node clusters. You can develop a stochastic algorithm using the Splash programming interface without worrying about about issues of distributed computing. The parallelization is automatic and it is communication efficient. Splash is built on <a href="http://www.scala-lang.org/">Scala</a> and <a href="https://spark.apache.org/">Apache Spark</a>, so that you can employ it to process <a href="https://spark.apache.org/docs/latest/quick-start.html">Resilient Distributed Datasets (RDD)</a>.</p>
 
 <p>On large-scale datasets, Splash can be substantially faster than existing data analytics packages built on Apache Spark. For example, to fit a 10-class logistic regression model on the <a href="http://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/multiclass.html#mnist8m">mnist8m dataset</a>, stochastic gradient descent (SGD) implemented with Splash is 25x faster than <a href="https://spark.apache.org/docs/latest/mllib-optimization.html#l-bfgs">MLlib’s L-BFGS</a> and 75x faster than <a href="https://spark.apache.org/docs/latest/mllib-optimization.html#gradient-descent-and-stochastic-gradient-descent">MLlib’s mini-batch SGD</a> for achieving the same value of the loss function. All algorithms run on a 64-core cluster.</p>
 
@@ -27,6 +27,6 @@ layout: frontpage
 <img src="https://raw.githubusercontent.com/zhangyuc/splash/master/images/compare-with-lbfgs.png" width="400" />
 </p>
 
-<p>Read the <a href="quickstart/">Quick Start</a> guide to start building your own stochastic algorithm, or view the source code <a href="https://github.com/zhangyuc/splash/tree/master">here</a>.</p>
+<p>Read the <a href="quickstart/">Quick Start</a> guide to start building your own stochastic algorithm, read our <a href="http://arxiv.org/abs/1506.07552>paper</a> to learn more about what is under the hood, or view the source code <a href="https://github.com/zhangyuc/splash/tree/master">here</a>.</p>
 
 
