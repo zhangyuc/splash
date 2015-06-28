@@ -5,7 +5,7 @@ permalink: /mlpackage/
 weight : 2
 ---
 
-The current version of Splash implements several classical stochastic algorithms for machine learning:
+The current version of Splash implements several classical stochastic algorithms for machine learning, including:
 
 * TOC
 {:toc}
