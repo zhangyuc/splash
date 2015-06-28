@@ -4,31 +4,29 @@ layout: frontpage
 
 <h1 id="what-is-stochastic-algorithm">What is a Stochastic Learning Algorithm?</h1>
 
-<p>Stochastic algorithm is a family of algorithms which processes a large dataset by sequentially processing its random samples. Since their per-iteration computation cost is independent of the data size, these algorithms are very efficient in learning from large-scale data. Typical examples of stochastic algorithm include:</p>
+<p>Stochastic learning algorithms are a broad family of algorithms that process a large dataset by sequential processing of random samples of the dataset. Since their per-iteration computation cost is independent of the overall size of the dataset, stochastic algorithms can be very efficient in the analysis of large-scale data. Examples of stochastic algorithms include:</p>
 
 <ul>
   <li><a href="http://en.wikipedia.org/wiki/Stochastic_gradient_descent">Stochastic Gradient Descent (SGD)</a></li>
   <li><a href="http://www.jmlr.org/papers/volume14/shalev-shwartz13a/shalev-shwartz13a.pdf">Stochastic Dual Coordinate Ascent (SDCA)</a></li>
-  <li><a href="http://en.wikipedia.org/wiki/Markov_chain_Monte_Carlo">Markov chain Monte Carlo (MCMC)</a></li>
+  <li><a href="http://en.wikipedia.org/wiki/Markov_chain_Monte_Carlo">Markov Chain Monte Carlo (MCMC)</a></li>
   <li><a href="http://en.wikipedia.org/wiki/Gibbs_sampling">Gibbs Sampling</a></li>
   <li><a href="http://www.columbia.edu/~jwp2128/Papers/HoffmanBleiWangPaisley2013.pdf">Stochastic Varitional Inference</a></li>
-  <li><a href="http://research.microsoft.com/en-us/um/people/minka/papers/ep/minka-ep-uai.pdf">Expectation Propagation</a>.</li>
+  <li><a href="http://research.microsoft.com/en-us/um/people/minka/papers/ep/minka-ep-uai.pdf">Expectation Propagation</a></li>
 </ul>
 
 <br>
 
-<h1 id="what-is-splash">What is Splash</h1>
+<h1 id="what-is-splash">What is Splash?</h1>
 
-<p>Traditionally, stochastic algorithms are difficult to parallelize due to their sequential nature. <strong>Splash</strong> is a general framework for parallelizing stochastic algorithms on multi-node clusters. You can develop any stochastic algorithm using the Splash programming interface without knowing any detail about distributed computing. The parallelization is automatic and is communication efficient. Splash is built on <a href="http://www.scala-lang.org/">Scala</a> and <a href="https://spark.apache.org/">Apache Spark</a>, so that you can employ it to process the <a href="https://spark.apache.org/docs/latest/quick-start.html">Resilient Distributed Datasets (RDD)</a>.</p>
+<p>Stochastic learning algorithms are generally defined as sequential procedures and as such they can be difficult to parallelize. <strong>Splash</strong> is a general-purpose framework for parallelizing stochastic learning algorithms on multi-node clusters. You can develop a stochastic algorithm using the Splash programming interface without concern about issues of distributed computing. The parallelization is automatic and it is communication efficient. Splash is built on <a href="http://www.scala-lang.org/">Scala</a> and <a href="https://spark.apache.org/">Apache Spark</a>, so that you can employ it to process <a href="https://spark.apache.org/docs/latest/quick-start.html">Resilient Distributed Datasets (RDD)</a>.</p>
 
-<p>On large-scale datasets, the algorithm developed via Splash can be substantially faster than existing Spark-based data analytics packages. For example, to learn a 10-class logistic regression model on the <a href="http://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/multiclass.html#mnist8m">mnist8m dataset</a>, The SGD implemented via Splash is 25x faster than <a href="https://spark.apache.org/docs/latest/mllib-optimization.html#l-bfgs">MLlib’s L-BFGS</a> and 75x faster than <a href="https://spark.apache.org/docs/latest/mllib-optimization.html#gradient-descent-and-stochastic-gradient-descent">MLlib’s mini-batch SGD</a> for achieving the same logistic loss. All algorithms run on a 64-core cluster.</p>
+<p>On large-scale datasets, Splash can be substantially faster than existing data analytics packages built on Apache Spark. For example, to fit a 10-class logistic regression model on the <a href="http://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/multiclass.html#mnist8m">mnist8m dataset</a>, stochastic gradient descent (SGD) implemented with Splash is 25x faster than <a href="https://spark.apache.org/docs/latest/mllib-optimization.html#l-bfgs">MLlib’s L-BFGS</a> and 75x faster than <a href="https://spark.apache.org/docs/latest/mllib-optimization.html#gradient-descent-and-stochastic-gradient-descent">MLlib’s mini-batch SGD</a> for achieving the same value of the loss function. All algorithms run on a 64-core cluster.</p>
 
 <p align="center">
 <img src="https://raw.githubusercontent.com/zhangyuc/splash/master/images/compare-with-lbfgs.png" width="400" />
 </p>
 
-<p>Read the <a href="quickstart/">Quick Start</a> to start building your own stochastic algorithm, or view the source code <a href="https://github.com/zhangyuc/splash/tree/master">here</a>.
-To learn more details about the mechanism of Splash, please read <a href="http://arxiv.org/abs/1506.07552">our paper</a>.
-</p>
+<p>Read the <a href="quickstart/">Quick Start</a> guide to start building your own stochastic algorithm, or view the source code <a href="https://github.com/zhangyuc/splash/tree/master">here</a>.</p>
 
 
