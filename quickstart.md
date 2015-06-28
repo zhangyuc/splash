@@ -27,7 +27,7 @@ import splash.core._
 
 # Create Dataset
 
-The first step is to create a distributed dataset. Splash provides an abstraction called **Parametrized RDD**. The Parametrized RDD is very similar to the Resilient Distributed Dataset (RDD) of Spark. It can be created by a standard RDD:
+The first step is to create a distributed dataset. Splash provides an abstraction called a **Parametrized RDD**. The Parametrized RDD is very similar to the Resilient Distributed Dataset (RDD) of Spark. It can be created from a standard RDD:
 
 {% highlight scala %}
 val paramRdd = new ParametrizedRDD(rdd)
@@ -37,13 +37,13 @@ where `rdd` is the RDD that holds your dataset.
 
 # Set-up Data Processing Function
 
-To execute the algorithm, set a data processing function `process` to the dataset by
+To execute the algorithm, set a data processing function `process` for the dataset by invoking
 
 {% highlight scala %}
 paramRdd.setProcessFunction(process)
 {% endhighlight %}
 
-The `process` function is implemented by the user. It takes four objects as input: **a data element** from the dataset, **the weight** of this element, **the shared variable** shared across the dataset and **the local variable** associated with this element. The `process` function reads the input to perform some update on the variables. The capability of processing weighted elements is mandatory even if the original data is unweighted. This is because that Splash will automatically assign non-unit weights to the samples as a part of its parallelization strategy. For example, the algorithm for computing document statistics can be implemented as:
+The `process` function is implemented by the user. It takes four objects as input: a **data element** from the dataset, the **weight** of this element, the **shared variable** shared across the dataset and the **local variable** associated with this element. The `process` function reads the input to perform some update on the variables. The capability of processing weighted elements is mandatory even if the original data is unweighted. This is because that Splash will automatically assign non-unit weights to the samples as a part of its parallelization strategy. For example, the algorithm for computing document statistics can be implemented as:
 
 {% highlight scala %}
 val process = (line: String, weight: Double, sharedVar: SharedVariableSet,  localVar: LocalVariableSet) => {
@@ -53,14 +53,14 @@ val process = (line: String, weight: Double, sharedVar: SharedVariableSet,  loca
 }
 {% endhighlight %}
 
-In the programming interface, all variables are stored as key-value pairs. The key must be a string. The value could be either a real number of an array of real numbers. In the above code, the shared variable is updated by the `add` method. If the algorithm needs to read a variable, use the `get` method:
+In the programming interface, all variables are stored as key-value pairs. The key must be a string. The value can be either a real number of an array of real numbers. In the above code, the shared variable is updated by the `add` method. If the algorithm needs to read a variable, use the `get` method:
 
 {% highlight scala %}
 val v1 = localVar.get(key)
 val v2 = sharedVar.get(key)
 {% endhighlight %}
 
-The local variable can be updated by putting a new value:
+The local variable can be updated as follows:
 
 {% highlight scala %}
 localVar.set(key,value)
@@ -77,7 +77,7 @@ val spc = (new SplashConf).set("max.thread.number", 8)
 paramRdd.run(spc)
 {% endhighlight %}
 
-so that every thread starts processing its local dataset and synchronize at the end. In the default setting, every thread takes a full pass over its local dataset by calling the `run()` method. You can change the amount of data to be processed by configuring the `spc` object. You can also take multiple passes over the dataset by multiple calls to the `run()` method.
+so that every thread starts processing its local dataset and synchronizes at the end. In the default setting, every thread takes a full pass over its local dataset by calling the `run()` method. You can change the amount of data to be processed by configuring the `spc` object. You can also take multiple passes over the dataset by multiple calls to the `run()` method.
 
 # Output and Evaluation
 
