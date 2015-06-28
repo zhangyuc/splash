@@ -15,12 +15,12 @@ class Proposal extends Serializable{
   var delta = new HashMap[String, ProposalDeltaValue]
   var deltaArray = new HashMap[String, ProposalDeltaValueArray]
   
-  def dispose() {
+  private[splash] def dispose() {
     delta.clear()
     deltaArray.clear()
   }
   
-  def add(prop2:Proposal) = {
+  private[splash] def add(prop2:Proposal) = {
     for(pair <- prop2.delta){
       val key = pair._1
       if(delta.contains(key)){

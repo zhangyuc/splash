@@ -11,6 +11,15 @@ class WordToken(initWordId : Int, initWordCount : Int, initTopicId : Int) extend
   var topicId = initTopicId 
 }
 
+/*
+ * This class implements the Collapsed Gibbs Sampling algorithm for fitting the Latent Dirichlet Allocation 
+ * (LDA) model. To use this package, the dataset should be an instance of RDD[(docId, wordToken)]. The docId 
+ * is the ID of the document, the wordToken represents a word token in the document.
+ * 
+ * docId, wordId and topicId should be integers starting from zero. The Collapsed Gibbs Sampling algorithm 
+ * resamples the topicId for each word. Call the sample method to start running the algorithm.
+ */
+
 class CollapsedGibbsSamplingForLDA {
   var iters = 10
   var process : ((Int, WordToken), Double, SharedVariableSet, LocalVariableSet ) => Unit = null
@@ -24,6 +33,10 @@ class CollapsedGibbsSamplingForLDA {
   var numDocuments = 0
   var vocabSize = 0
   
+  /*
+   * The sample method returns an RDD[(docId, wordToken)] object in which the 
+   * topic of each word token has been resampled. 
+   */
   def sample(data: RDD[(Int, WordToken)]) = {
     val numPartitions = data.partitions.length
     val n = data.map( x => x._2.wordCount ).sum()
@@ -165,22 +178,34 @@ class CollapsedGibbsSamplingForLDA {
     }
   }
   
+  /*
+   * set the number of topics of the LDA model.
+   */
   def setAlphaBeta(abPair : (Double,Double)) = {
     this.alpha = abPair._1
     this.beta = abPair._2
     this
   }
   
+  /*
+   * set the (alpha, beta) hyper-parameters of the LDA model.
+   */
   def setNumTopics(numTopics: Int) = {
     this.numTopics = numTopics 
     this 
   }
   
+  /*
+   * set the number of rounds that SGD runs and synchronizes.
+   */
   def setNumIterations(iters: Int) = {
     this.iters = iters 
     this 
   }
   
+  /*
+   * set if printing the debug info. The default value is false.
+   */
   def setPrintDebugInfo(printDebugInfo : Boolean) = {
     this.printDebugInfo = printDebugInfo
     this

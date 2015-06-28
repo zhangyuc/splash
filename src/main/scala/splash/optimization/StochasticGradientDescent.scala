@@ -3,6 +3,13 @@ import org.apache.spark.mllib.linalg.{Vectors,Vector,DenseVector,SparseVector}
 import org.apache.spark.rdd.RDD
 import splash.core._
 
+/*
+ * This class implements the AdaGrad SGD algorithm. To use this package, 
+ * the dataset should be label-feature pairs stored as data: RDD[Double, Vector]. The label 
+ * should be {0,1,2,…} for classification problems. The Vector is defined in the MLlib package. 
+ * Call the optimize method to start running the algorithm.
+ */
+
 class StochasticGradientDescent {
   var gradient : Gradient = null
   var iters = 10
@@ -15,6 +22,9 @@ class StochasticGradientDescent {
   var evalLoss : ((Double, Vector), SharedVariableSet, LocalVariableSet ) => Double = null
   var printDebugInfo = false
   
+  /*
+   * start running the AdaGrad SGD algorithm.
+   */
   def optimize(data: RDD[(Double, Vector)], initialWeights: Vector) = {
     val numPartitions = data.partitions.length
     val paramRdd = new ParametrizedRDD(data.repartition(numPartitions))
@@ -134,36 +144,65 @@ class StochasticGradientDescent {
     }
   }
   
+  /*
+   * The setGradient method requires a splash.optimization.Gradient object as input. 
+   * You may use Splash’s pre-built Gradient classes: LogisticGradient, MultiClassLogisticGradient, 
+   * HingeGradient or LeastSquaresGradient; or implement your own Gradient class
+   */
   def setGradient(gradient: Gradient) = {
     this.gradient = gradient
     this
   }
   
+  /*
+   * set the number of rounds that SGD runs and synchronizes.
+   */
   def setNumIterations(iters: Int) = {
     this.iters = iters 
     this 
   }
   
+  /*
+   * set a scalar value denoting the stepsize of stochastic gradient descent. 
+   * Although the stepsize of individual iterates are adaptively chosen by AdaGrad, 
+   * they will always be proportional to this parameter.
+   */
   def setStepSize(stepsize: Double) = {
     this.stepsize = stepsize
     this
   }
   
+  /*
+   * set the proportion of local data processed in each iteration. The default value is 1.0. 
+   * By choosing a smaller proportion, the algorithm will synchronize more frequently or 
+   * terminate more quickly.
+   */
   def setDataPerIteration(dataPerIteration: Double) = {
     this.dataPerIteration = dataPerIteration
     this
   }
   
+  /*
+   * set the maximum number of threads to run. The default value is equal to the number of Parametrized RDD partitions.
+   */
   def setMaxThreadNum(maxThreadNum: Int) = {
     this.maxThreadNum = maxThreadNum
     this
   }
   
+  /*
+   * if the value is true, then the number of parallel threads will be chosen 
+   * automatically by the system but is always bounded by maxThreadNum. Otherwise, 
+   * the number of parallel threads will be equal to maxThreadNum.
+   */
   def setAutoThread(autoThread : Boolean) = {
     this.autoThread = autoThread
     this
   }
   
+  /*
+   * set if printing the debug info. The default value is false.
+   */
   def setPrintDebugInfo(printDebugInfo : Boolean) = {
     this.printDebugInfo = printDebugInfo
     this

@@ -5,12 +5,16 @@ class SplashConf {
   var dataPerIteration = 1.0
   var autoThread = true
   
+  /*
+   * set a property
+   */
   def set(key:String, value:String) = {
     if(key.equals("max.thread.num")){
       maxThreadNum = value.toInt
     }
     if(key.equals("data.per.iteration")){
-      dataPerIteration = math.max(1.0, value.toDouble)
+      require(value.toDouble > 0 && value.toDouble <= 1, "data.per.iteration should belong to (0,1]")
+      dataPerIteration = value.toDouble
     }
     if(key.equals("auto.thread")){
       autoThread = value.toBoolean
@@ -18,16 +22,23 @@ class SplashConf {
     this
   }
   
+  /*
+   * set a property
+   */
   def set(key:String, value:Double) : SplashConf = {
     if(key.equals("max.thread.num")){
       maxThreadNum = value.toInt
     }
     if(key.equals("data.per.iteration")){
-      dataPerIteration = math.max(1.0, value)
+      require(value.toDouble > 0 && value.toDouble <= 1, "data.per.iteration should belong to (0,1]")
+      dataPerIteration = value.toDouble
     }
     this
   }
   
+  /*
+   * set a property
+   */
   def set(key:String, value:Boolean) : SplashConf = {
     if(key.equals("auto.thread")){
       autoThread = value

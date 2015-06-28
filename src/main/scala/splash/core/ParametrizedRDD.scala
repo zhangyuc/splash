@@ -43,22 +43,35 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     init_rdd.map( x => (Random.nextInt(npar), x)).partitionBy(new HashPartitioner(npar)).map( x => x._2 )
   }
   
-  def duplicate(duplicateNum : Int) = {
-    if(duplicateNum > 0){
-      duplicateWorkset(this.worksets, duplicateNum)
-      length *= duplicateNum
+  /* 
+   * Make n-1 copies of every element without reshuffling.
+   */
+  def duplicate(n : Int) = {
+    if(n > 0){
+      duplicateWorkset(this.worksets, n)
+      length *= n
     }
     this
   }
   
-  def duplicateAndReshuffle(duplicateNum : Int) = {
-    if(duplicateNum > 0){
-      duplicateWorksetAndReshuffle(this.worksets, duplicateNum)
-      length *= duplicateNum
+  /* 
+   * Make n-1 copies of every element and reshuffle them across partitions. 
+   * This will enlarge the dataset by a factor of n. Parallel threads can 
+   * reduce communication costs by passing a larger local dataset.
+   */
+  def duplicateAndReshuffle(n : Int) = {
+    if(n > 0){
+      duplicateWorksetAndReshuffle(this.worksets, n)
+      length *= n
     }
     this
   }
   
+  /*
+   * Reshuffle all elements across partitions. If your original dataset has 
+   * not been shuffled, this operation is recommended at the creation of the 
+   * Parametrized RDD.
+   */
   def reshuffle() = {
     duplicateWorksetAndReshuffle(this.worksets, 1)
     this
@@ -133,16 +146,31 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
   def getLastIterationThreadNumber() = lastIterationThreadNumber
   def partitions = worksets.partitions
   
+  /*
+   * Set the data processing function. The function func takes an arbitrary element, 
+   * the weight of the element and the associated local/shared variables. It performs 
+   * update on the local/shared variables.
+   */
   def setProcessFunction(func :(T, Double, SharedVariableSet, LocalVariableSet) => Any) = {
     process_func = func
     this
   }
   
+  /*
+   * Set a loss function for the stochastic algorithm. The function func takes an 
+   * element and the associated local/shared variables. It returns the loss incurred 
+   * by this element. Setting a loss function for the algorithm is optional, but a 
+   * reasonable loss function may help Splash choose a better degree of parallelism.
+   */
   def setLossFunction(func: (T, SharedVariableSet, LocalVariableSet) => Double) = {
     evaluate_func = func
     this
   }
   
+  /*
+   * Return a RDD formed by mapping each element by function func. The function 
+   * takes the element and the associated local/shared variables as input
+   */
   def map[U: ClassTag](func : (T, SharedVariableSet, LocalVariableSet) => U) = {
     val list = new ListBuffer[U]
     val f = func
@@ -158,6 +186,10 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     })
   }
   
+  /*
+   * Reduce all elements by function func. The function takes two elements 
+   * as input and returns a single element as output.
+   */
   def reduce(func : (T, T) => T) = {
     val f = func
     worksets.flatMap( workset => {
@@ -166,6 +198,10 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     }).reduce(f)
   }
   
+  /*
+   * Process each element by function func. The function takes the element 
+   * and the associated local/shared variables as input.
+   */
   def foreach(func : (T, SharedVariableSet, LocalVariableSet) => Any) = {
     val f = func
     worksets.foreach( workset => {
@@ -179,11 +215,9 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     })
   }
   
-  def syncSharedVariable(){
-    val mergedProp =  worksets.map( _.sharedVar.exportProposal(1.0) ).filter( _ != null ).treeReduce( _ add _)
-    worksets.foreach( _.sharedVar.updateVariableByProposal(mergedProp) )
-  }
-  
+  /*
+   * Return a RDD formed by mapping the shared variable set by function func.
+   */
   def mapSharedVariable[U: ClassTag](func : SharedVariableSet => U) = {
     val f = func
     worksets.map{
@@ -191,11 +225,18 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     }
   }
   
+  /*
+   * Reduce all shared variable sets by function func. The function takes two SharedVariableSet objects 
+   * as input and returns a single SharedVariableSet object as output.
+   */
   def reduceSharedVariable(func : (SharedVariableSet, SharedVariableSet) => SharedVariableSet) = {
     val f = func
     worksets.map(_.sharedVar).reduce(f)
   }
   
+  /*
+   * Process the shared variable set by function func.
+   */
   def foreachSharedVariable( preprocess_func: SharedVariableSet => Any ) {
     val pfunc = preprocess_func
     worksets.foreach( workset => {
@@ -203,6 +244,33 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     })
   }
   
+  /*
+   * Synchronize the shared variable across all partitions. If the shared variables is 
+   * changed by map/foreach but not synchronized, the change may not actually take effect.
+   */
+  def syncSharedVariable(){
+    val mergedProp =  worksets.map( _.sharedVar.exportProposal(1.0) ).filter( _ != null ).treeReduce( _ add _)
+    worksets.foreach( _.sharedVar.updateVariableByProposal(mergedProp) )
+  }
+  
+  /*
+   * Return the set of shared variables in the first partition.
+   */
+  def getSharedVariable() = {
+    worksets.map( workset => workset.sharedVar ).first()
+  }
+  
+  /*
+   * Return the set of shared variables in all partitions.
+   */
+  def getAllSharedVariables() = {
+    worksets.map( workset => workset.sharedVar ).collect()
+  }
+  
+  /*
+   * Use the data processing function to process the dataset. spc is a SplashConf object. 
+   * It specifies the hyper-parameters that the system needs.
+   */
   def run(spc: SplashConf = new SplashConf()) = {
     if(iterNum == 0 || dataProcessedSinceLastShuffling >= 1.0){
       refresh()
@@ -212,28 +280,14 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     this
   }
   
-  def getSharedVariable() = {
-    worksets.map( workset => workset.sharedVar ).first()
-  }
-  
-  def getAllSharedVariables() = {
-    worksets.map( workset => workset.sharedVar ).collect()
-  }
-      
-  def toRDD () = {
-    val processed_data = worksets.flatMap[Record[T]]( workset => {
-      val recordList = new ListBuffer[Record[T]]
-      recordList ++= workset.recordArray
-      recordList.iterator
-    })
-    processed_data
-  }
-  
+  /*
+   * remove Parametrized RDD from the memory cache.
+   */
   def unpersist(){
     worksets.unpersist()
   }
   
-  def refresh() {
+  private def refresh() {
     val shuffle_seed = globalRnd.nextInt(65536)
     worksets.foreach( workset => {
       val rnd = new Random(shuffle_seed + workset.id)
@@ -251,7 +305,7 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     dataProcessedSinceLastShuffling = 0.0
   }
   
-  val getShuffledIndex = (n:Int) => {
+  private val getShuffledIndex = (n:Int) => {
     val array = new Array[Int](n)
     for(i <- 0 until n){
       array(i) = i
@@ -265,7 +319,7 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     array
   }
   
-  def assignGroup(GroupAssignment : HashMap[Int, Int], num_of_workset : Int, maxThread: Int, startIndex: Int) = {
+  private def assignGroup(GroupAssignment : HashMap[Int, Int], num_of_workset : Int, maxThread: Int, startIndex: Int) = {
     var groupnum = 0
     var remainingThread = maxThread
     var currentThreadNumber = math.min(math.max(lastIterationThreadNumber, math.sqrt(maxThread).toInt), maxThread)
@@ -284,7 +338,7 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     groupnum
   }
   
-  def takePass[U: ClassTag] ( rnd:Random, worksets: rdd.RDD[WorkSet[U]],
+  private def takePass[U: ClassTag] ( rnd:Random, worksets: rdd.RDD[WorkSet[U]],
     process_func:(U, Double, SharedVariableSet, LocalVariableSet) => Any,
     evaluate_func: (U, SharedVariableSet, LocalVariableSet) => Double, 
     spc : SplashConf ) {

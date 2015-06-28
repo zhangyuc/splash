@@ -37,7 +37,7 @@ class WorkSet[U: ClassTag] extends Serializable{
   var trainGroupId = 0
   var testGroupId = 0
   
-  def backupRecord(firstIndex : Int, length : Int){
+  private[splash] def backupRecord(firstIndex : Int, length : Int){
     backupArray = new Array[Record[U]](length)
     backupFirstIndex = firstIndex
     for(i <- 0 until length){
@@ -45,28 +45,28 @@ class WorkSet[U: ClassTag] extends Serializable{
     }
   }
   
-  def restoreRecord() {
+  private[splash] def restoreRecord() {
     for(i <- 0 until backupArray.length){
       recordArray((backupFirstIndex+i)%recordArray.length) = backupArray(i)
     }
   }
   
-  def clearBackupedRecord(){
+  private[splash] def clearBackupedRecord(){
     backupArray = null
     backupFirstIndex = 0
   }
   
-  def nextRecord() = {
+  private[splash] def nextRecord() = {
     val record = recordArray(iterator)
     iterator = (iterator + 1) % recordArray.length
     record
   }
   
-  def checkpoint() = {
+  private[splash] def checkpoint() = {
     cp = iterator
   }
   
-  def restore(){
+  private[splash] def restore(){
     iterator = cp
   }
 }
