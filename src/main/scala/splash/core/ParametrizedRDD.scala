@@ -176,10 +176,11 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     val f = func
     worksets.flatMap( workset => {
       for(record <- workset.recordArray){
-        val localVar = new LocalVariableSet(record.variable)
+        val localVar = new LocalVariableSet(record.variable, record.variableArray)
         workset.sharedVar.setDelayedDelta(record.delayedDelta)
         list.append(f(record.line, workset.sharedVar, localVar))
-        record.variable = localVar.toArray()
+        record.variable = localVar.variableToArray()
+        record.variableArray = localVar.variableArrayToArray
         record.delayedDelta = workset.sharedVar.exportDelayedDelta()
       }
       list.iterator
@@ -206,10 +207,11 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     val f = func
     worksets.foreach( workset => {
       for(record <- workset.recordArray){
-        val localVar = new LocalVariableSet(record.variable)
+        val localVar = new LocalVariableSet(record.variable, record.variableArray)
         workset.sharedVar.setDelayedDelta(record.delayedDelta)
         f(record.line, workset.sharedVar, localVar)
-        record.variable = localVar.toArray()
+        record.variable = localVar.variableToArray()
+        record.variableArray = localVar.variableArrayToArray()
         record.delayedDelta = workset.sharedVar.exportDelayedDelta()
       }
     })
@@ -249,7 +251,7 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
    * changed by map/foreach but not synchronized, the change may not actually take effect.
    */
   def syncSharedVariable(){
-    val mergedProp =  worksets.map( _.sharedVar.exportProposal(1.0) ).filter( _ != null ).treeReduce( _ add _)
+    val mergedProp =  worksets.map( _.sharedVar.exportProposal(1.0f) ).filter( _ != null ).treeReduce( _ add _)
     worksets.foreach( _.sharedVar.updateVariableByProposal(mergedProp) )
   }
   
@@ -344,7 +346,6 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     spc : SplashConf ) {
     
     // assign variables
-    val beta = 0.9
     val num_of_workset = numOfWorkset
       
     // prepare broadcast
@@ -410,20 +411,21 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
         val sharedVar = workset.sharedVar
         sharedVar.clearDelayedDelta()
         sharedVar.batchSize = batchsize * weight
-        sharedVar.delayedAddShrinkFactor = 1.0 / weight
+        sharedVar.delayedAddShrinkFactor = 1.0f / weight
         
         for(i <- 0 until batchsize){
           val record = workset.nextRecord()
-          val localVar = new LocalVariableSet(record.variable)
+          val localVar = new LocalVariableSet(record.variable, record.variableArray)
           sharedVar.sampleIndex = i * weight
-          sharedVar.executeDelayedAdd(record.delayedDelta)
+          sharedVar.systemExecuteDelayedAdd(record.delayedDelta)
           func(record.line, weight, sharedVar, localVar)
-          record.variable = localVar.toArray()
+          record.variable = localVar.variableToArray()
+          record.variableArray = localVar.variableArrayToArray()
           record.delayedDelta = sharedVar.exportDelayedDelta()
         }
         sharedVar.batchSize = 0
         sharedVar.sampleIndex = 0
-        sharedVar.delayedAddShrinkFactor = 1.0
+        sharedVar.delayedAddShrinkFactor = 1.0f
         
         // construct a proposal
         workset.prop = sharedVar.exportProposal(weight)
@@ -438,7 +440,10 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     
     if(groupNum == 1){
       // merge proposal
-      val mergedPropBroadcast = worksets.filter( _.prop != null ).map( _.prop ).treeReduce( _ add _ )
+      val mergedPropBroadcast = {
+        if(spc.treeReduce) worksets.filter( _.prop != null ).map( _.prop ).treeReduce( _ add _ )
+        else worksets.filter( _.prop != null ).map( _.prop ).reduce( _ add _ )
+      }
       // update by the final proposal
       worksets.foreach( workset => {
         workset.sharedVar.updateVariableByProposal(mergedPropBroadcast)
@@ -475,7 +480,7 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
           workset.restore()
           for(i <- 0 until batchsize){ 
             val record = workset.nextRecord()
-            val localVar = new LocalVariableSet(record.variable)
+            val localVar = new LocalVariableSet(record.variable, record.variableArray)
             loss += evalLoss(record.line, sharedVar, localVar)
           }
           val res = (workset.testGroupId, (loss, batchsize))

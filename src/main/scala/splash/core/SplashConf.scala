@@ -4,6 +4,7 @@ class SplashConf {
   var maxThreadNum = 0
   var dataPerIteration = 1.0
   var autoThread = true
+  var treeReduce = true
   
   /*
    * set a property
@@ -18,6 +19,9 @@ class SplashConf {
     }
     if(key.equals("auto.thread")){
       autoThread = value.toBoolean
+    }
+    if(key.equals("tree.reduce")){
+      treeReduce = value.toBoolean
     }
     this
   }
@@ -42,6 +46,9 @@ class SplashConf {
   def set(key:String, value:Boolean) : SplashConf = {
     if(key.equals("auto.thread")){
       autoThread = value
+    }
+    if(key.equals("tree.reduce")){
+      treeReduce = value
     }
     this
   }

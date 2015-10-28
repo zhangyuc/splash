@@ -3,32 +3,33 @@ package splash.core
 import scala.collection.mutable._
 
 class DeltaValue extends Serializable{
-  var delta = 0.0
-  var unweightedDelta = 0.0
-  var prefactor = 1.0
+  var delta = 0.0f
+  var unweightedDelta = 0.0f
+  var prefactor = 1.0f
   var sync = true
 }
 
 class DeltaValueArray extends Serializable{
   var array : Array[DeltaValue] = null
-  var prefactor = 1.0
+  var prefactor = 1.0f
   var sync = true
+  var multiplied = false
 }
 
 class SharedVariableBackup extends Serializable{
-  var variable = new HashMap[String, Double]
-  var variableArray = new HashMap[String, Array[Double]]
+  var variable = new HashMap[String, Float]
+  var variableArray = new HashMap[String, Array[Float]]
 }
 
 class SharedVariableSet extends Serializable{
-  var variable = new HashMap[String, Double]
+  var variable = new HashMap[String, Float]
   var delta = new HashMap[String, DeltaValue]
-  var variableArray = new HashMap[String, Array[Double]]
+  var variableArray = new HashMap[String, Array[Float]]
   var deltaArray = new HashMap[String, DeltaValueArray]
   var loss = 0.0
   
-  var delayedDelta : HashMap[(String, Int), Double] = null
-  var delayedAddShrinkFactor : Double = 1.0
+  var delayedDelta : HashMap[(String, Int), Float] = null
+  var delayedAddShrinkFactor = 1.0f
   var backup = new HashMap[String, SharedVariableBackup]
   
   // variables for element counting
@@ -59,41 +60,62 @@ class SharedVariableSet extends Serializable{
   }
   
   /*
-   *  set is not recommended since it may break consistency,
-   *  don't use it unless you know what you are doing.
+   *  The following operations are not recommended since they may break consistency,
+   *  don't use them unless necessary.
    */
   def set(key:String, value:Double) {
-    variable.put(key, value)
+    variable.put(key, value.toFloat)
   }
   
-  /*
-   *  setArray is not recommended since it may break consistency,
-   *  don't use it unless you know what you are doing.
-   */
+  def getStaleArray(key:String) = {
+    variableArray.applyOrElse(key, (x:Any)=>null)
+  }
+  
+  def setArray(key:String, value:Array[Float]){
+    variableArray.put(key, value)
+  }
+  
   def setArray(key:String, value:Array[Double]){
-    if(!variableArray.contains(key)){
-      variableArray(key) = new Array[Double](value.length)
-    }
-    val varArray = variableArray(key)
-    val n = varArray.length
-    var i = 0
-    while(i < n){
-      varArray(i) = value(i)
-      i += 1
-    }
+    val n = value.length
+    val value_f = new Array[Float](n)
+    for(i <- 0 until n) value_f(i) = value(i).toFloat
+    setArray(key, value_f)
   }
   
-  /*
-   *  setArrayElements is not recommended since it may break consistency,
-   *  don't use it unless you know what you are doing.
-   */
-  def setArrayElements(key:String, indices: Array[Int], values:Array[Double]){
+  def setArrayElement(key:String, index: Int, value: Double){
+    val varArray = variableArray(key)
+    varArray(index) = value.toFloat
+  }
+  
+  def setArrayElements(key:String, indices: Array[Int], values:Array[Float]){
     val varArray = variableArray(key)
     val n = varArray.length
     var i = 0
     while(i < n){
       varArray(indices(i)) = values(i)
       i += 1
+    }
+  }
+  
+  def setArrayElements(key:String, indices: Array[Int], values:Array[Double]){
+    val n = values.length
+    val value_f = new Array[Float](n)
+    for(i <- 0 until n) value_f(i) = values(i).toFloat
+    setArrayElements(key, indices, value_f)
+  }
+  
+  def executeDelayedAddArrayElement(key:String, index:Int, value:Double)
+  {
+    if(deltaArray.contains(key)){
+      val deltaValueObject = deltaArray(key)
+      val dv = deltaValueObject.array(index)
+      refreshDeltaArrayElementPrefactor(dv, deltaValueObject.prefactor)
+      dv.unweightedDelta += value.toFloat
+    }
+    else{
+      declareArray(key, variableArray(key).length)
+      val deltaValueArray = deltaArray(key).array
+      deltaValueArray(index).unweightedDelta = value.toFloat
     }
   }
   
@@ -146,7 +168,7 @@ class SharedVariableSet extends Serializable{
     }
   }
   
-  private def refreshDeltaArrayElementPrefactor(dv: DeltaValue, new_factor:Double){
+  private def refreshDeltaArrayElementPrefactor(dv: DeltaValue, new_factor:Float){
     if(dv.prefactor != new_factor){
       dv.delta *= new_factor / dv.prefactor
       dv.unweightedDelta *= new_factor / dv.prefactor
@@ -160,10 +182,10 @@ class SharedVariableSet extends Serializable{
   def get(key:String) = {
     if(delta.contains(key)){
       val dv = delta(key)
-      dv.prefactor * variable.applyOrElse(key, (x:Any) => 0.0) + dv.delta + dv.unweightedDelta
+      dv.prefactor * variable.applyOrElse(key, (x:Any) => 0.0f) + dv.delta.toDouble + dv.unweightedDelta
     }
     else{
-      variable.applyOrElse(key, (x:Any) => 0.0)
+      variable.applyOrElse(key, (x:Any) => 0.0f)
     }
   }
   
@@ -177,19 +199,85 @@ class SharedVariableSet extends Serializable{
       val n = deltaValueObject.array.length
       val returnArray = new Array[Double](n)
       var i = 0
-      while(i < n){
-        val dv = deltaValueObject.array(i)
-        refreshDeltaArrayElementPrefactor(dv, deltaValueObject.prefactor)
-        varArray match{
-          case null => returnArray(i) = dv.delta + dv.unweightedDelta
-          case _ => returnArray(i) = dv.prefactor * varArray(i) + dv.delta + dv.unweightedDelta
+      if(!deltaValueObject.multiplied){
+        while(i < n){
+          val dv = deltaValueObject.array(i)
+          varArray match{
+            case null => returnArray(i) = dv.delta + dv.unweightedDelta
+            case _ => returnArray(i) = varArray(i) + dv.delta + dv.unweightedDelta
+          }
+          i += 1
         }
-        i += 1
+      }
+      else{
+        while(i < n){
+          val dv = deltaValueObject.array(i)
+          refreshDeltaArrayElementPrefactor(dv, deltaValueObject.prefactor)
+          varArray match{
+            case null => returnArray(i) = dv.delta + dv.unweightedDelta
+            case _ => returnArray(i) = dv.prefactor * varArray(i) + dv.delta + dv.unweightedDelta
+          }
+          i += 1
+        }
       }
       returnArray
     }
     else{
-      if(varArray != null) varArray.clone()
+      if(varArray != null){
+        val n = varArray.length
+        val returnArray = new Array[Double](n)
+        var i = 0
+        while(i < n){
+          returnArray(i) = varArray(i)
+          i += 1
+        }
+        returnArray
+      }
+      else null
+    }
+  }
+  
+  def getFloatArray(key:String) = {
+    val varArray = variableArray.applyOrElse(key, (x:Any) => null)
+    if(deltaArray.contains(key)){
+      val deltaValueObject = deltaArray(key)
+      val n = deltaValueObject.array.length
+      val returnArray = new Array[Float](n)
+      var i = 0
+      if(!deltaValueObject.multiplied){
+        while(i < n){
+          val dv = deltaValueObject.array(i)
+          varArray match{
+            case null => returnArray(i) = dv.delta + dv.unweightedDelta
+            case _ => returnArray(i) = varArray(i) + dv.delta + dv.unweightedDelta
+          }
+          i += 1
+        }
+      }
+      else{
+        while(i < n){
+          val dv = deltaValueObject.array(i)
+          refreshDeltaArrayElementPrefactor(dv, deltaValueObject.prefactor)
+          varArray match{
+            case null => returnArray(i) = dv.delta + dv.unweightedDelta
+            case _ => returnArray(i) = dv.prefactor * varArray(i) + dv.delta + dv.unweightedDelta
+          }
+          i += 1
+        }
+      }
+      returnArray
+    }
+    else{
+      if(varArray != null){
+        val n = varArray.length
+        val returnArray = new Array[Float](n)
+        var i = 0
+        while(i < n){
+          returnArray(i) = varArray(i)
+          i += 1
+        }
+        returnArray
+      }
       else null
     }
   }
@@ -231,11 +319,20 @@ class SharedVariableSet extends Serializable{
     if(deltaArray.contains(key)){
       val deltaValueObject = deltaArray(key)
       var i = 0
-      while(i < n){
-        val dv = deltaValueObject.array(indices(i))
-        refreshDeltaArrayElementPrefactor(dv, deltaValueObject.prefactor)
-        values(i) = deltaValueObject.prefactor * values(i) + dv.delta + dv.unweightedDelta
-        i += 1
+      if(!deltaValueObject.multiplied){
+        while(i < n){
+          val dv = deltaValueObject.array(indices(i))
+          values(i) = values(i) + dv.delta + dv.unweightedDelta
+          i += 1
+        }
+      }
+      else{
+        while(i < n){
+          val dv = deltaValueObject.array(indices(i))
+          refreshDeltaArrayElementPrefactor(dv, deltaValueObject.prefactor)
+          values(i) = deltaValueObject.prefactor * values(i) + dv.delta + dv.unweightedDelta
+          i += 1
+        }
       }
     }
     values
@@ -247,11 +344,11 @@ class SharedVariableSet extends Serializable{
   def add(key:String, deltaValue:Double) {
     if(delta.contains(key)){
       val dv = delta(key)
-      dv.delta += deltaValue
+      dv.delta += deltaValue.toFloat
     }
     else{
       val dv = new DeltaValue
-      dv.delta = deltaValue
+      dv.delta = deltaValue.toFloat
       delta.put(key, dv)
     }
   }
@@ -268,7 +365,7 @@ class SharedVariableSet extends Serializable{
       while(i < n){
         val dv = deltaValueArray(i)
         refreshDeltaArrayElementPrefactor(dv, deltaValueObject.prefactor)
-        dv.delta += deltaValue(i)
+        dv.delta += deltaValue(i).toFloat
         i += 1
       }
     }
@@ -277,7 +374,7 @@ class SharedVariableSet extends Serializable{
       val deltaValueArray = deltaArray(key).array
       var i = 0
       while(i < n){
-        deltaValueArray(i).delta = deltaValue(i)
+        deltaValueArray(i).delta = deltaValue(i).toFloat
         i += 1
       }
     }
@@ -291,12 +388,12 @@ class SharedVariableSet extends Serializable{
       val deltaValueObject = deltaArray(key)
       val dv = deltaValueObject.array(index)
       refreshDeltaArrayElementPrefactor(dv, deltaValueObject.prefactor)
-      dv.delta += deltaValue
+      dv.delta += deltaValue.toFloat
     }
     else{
       declareArray(key, variableArray(key).length)
       val deltaValueArray = deltaArray(key).array
-      deltaValueArray(index).delta = deltaValue
+      deltaValueArray(index).delta = deltaValue.toFloat
     }
   }
   
@@ -312,7 +409,7 @@ class SharedVariableSet extends Serializable{
       while(i < n){
         val dv = deltaValueObject.array(indices(i))
         refreshDeltaArrayElementPrefactor(dv, deltaValueObject.prefactor)
-        dv.delta += deltaValue(i)
+        dv.delta += deltaValue(i).toFloat
         i += 1
       }
     }
@@ -321,15 +418,15 @@ class SharedVariableSet extends Serializable{
       val deltaValueArray = deltaArray(key).array
       var i = 0
       while(i < n){
-        deltaValueArray(indices(i)).delta = deltaValue(i)
+        deltaValueArray(indices(i)).delta = deltaValue(i).toFloat
         i += 1
       }
     }
   }
   
-  private def insertDelayedDelta(key:String, index: Int, value:Double) {
+  private def insertDelayedDelta(key:String, index: Int, value:Float) {
     if(delayedDelta == null){
-      delayedDelta = new HashMap[(String, Int), Double]
+      delayedDelta = new HashMap[(String, Int), Float]
     }
     if(delayedDelta.contains((key,index))){
       delayedDelta.put((key,index), delayedDelta((key,index)) + value * delayedAddShrinkFactor)
@@ -346,7 +443,7 @@ class SharedVariableSet extends Serializable{
    * or for passing information to the future.
    */
   def delayedAdd(key:String, deltaValue:Double) {
-    insertDelayedDelta(key, -1, deltaValue)
+    insertDelayedDelta(key, -1, deltaValue.toFloat)
   }
   
   /*
@@ -354,7 +451,7 @@ class SharedVariableSet extends Serializable{
    */
   def delayedAddArray(key:String, deltaValue:Array[Double]){
     for(i <- 0 until deltaValue.length){
-      insertDelayedDelta(key, i, deltaValue(i))
+      insertDelayedDelta(key, i, deltaValue(i).toFloat)
     }
   }
   
@@ -362,7 +459,7 @@ class SharedVariableSet extends Serializable{
    * The same as addArrayElement, but the operation will not be executed until the next time the same element is processed.
    */
   def delayedAddArrayElement(key:String, index: Int, deltaValue:Double) {
-    insertDelayedDelta(key, index, deltaValue)
+    insertDelayedDelta(key, index, deltaValue.toFloat)
   }
   
   /*
@@ -371,8 +468,8 @@ class SharedVariableSet extends Serializable{
   def multiply(key:String, gamma:Double)
   {
     val adjusted_value = {
-      if(gamma == 0) 1e-16
-      else gamma
+      if(gamma == 0) 1e-16f
+      else gamma.toFloat
     }
     if(delta.contains(key)){
       val dv = delta(key)
@@ -393,19 +490,21 @@ class SharedVariableSet extends Serializable{
    */
   def multiplyArray(key:String, gamma:Double){
     val adjusted_value = {
-      if(gamma == 0) 1e-16
-      else gamma
+      if(gamma == 0) 1e-16f
+      else gamma.toFloat
     }
     if(deltaArray.contains(key)){
       deltaArray(key).prefactor *= adjusted_value
+      deltaArray(key).multiplied = true
     }
     else{
       declareArray(key, variableArray(key).length)
       deltaArray(key).prefactor = adjusted_value
+      deltaArray(key).multiplied = true
     }
   }
   
-  private[splash] def executeDelayedAdd(ops : Array[((String,Int), Double)])
+  private[splash] def systemExecuteDelayedAdd(ops : Array[((String,Int), Float)])
   {
     if(ops != null){
       for(operator <- ops){
@@ -441,13 +540,13 @@ class SharedVariableSet extends Serializable{
     }
   }
   
-  private[splash] def setDelayedDelta(ops : Array[((String, Int), Double)]){
+  private[splash] def setDelayedDelta(ops : Array[((String, Int), Float)]){
     if(ops != null){
       if(delayedDelta != null){
         delayedDelta.clear()
       }
       else{
-        delayedDelta = new HashMap[(String, Int), Double]
+        delayedDelta = new HashMap[(String, Int), Float]
       }
       for(elem <- ops){
         delayedDelta.put(elem._1, elem._2)
@@ -475,7 +574,7 @@ class SharedVariableSet extends Serializable{
   private[splash] def updateVariableByProposal(prop:Proposal){
     for( pair <- prop.delta ){
       val key = pair._1
-      variable.put(key, pair._2.prefactor * variable.applyOrElse(key, (x:Any) => 0.0) + pair._2.delta )
+      variable.put(key, pair._2.prefactor * variable.applyOrElse(key, (x:Any) => 0.0f) + pair._2.delta )
     }
     
     for( pair <- prop.deltaArray ){
@@ -500,7 +599,7 @@ class SharedVariableSet extends Serializable{
       }
       else{
         val n = pair._2.array.length
-        val varArray = new Array[Double](n)
+        val varArray = new Array[Float](n)
         var i = 0
         while(i < n){
           varArray(i) = pair._2.array(i)
@@ -513,7 +612,7 @@ class SharedVariableSet extends Serializable{
     deltaArray.clear()
   }
   
-  private[splash] def exportProposal(weight : Double) = {
+  private[splash] def exportProposal(weight : Float) = {
     val prop = new Proposal
     
     for(pair <- delta){
@@ -525,7 +624,7 @@ class SharedVariableSet extends Serializable{
       }
       else{
         val key = pair._1
-        variable.put(key, pair._2.prefactor * variable.applyOrElse(key, (x:Any) => 0.0) + pair._2.delta / weight + pair._2.unweightedDelta  )
+        variable.put(key, pair._2.prefactor * variable.applyOrElse(key, (x:Any) => 0.0f) + pair._2.delta / weight + pair._2.unweightedDelta  )
       }
     }
     
@@ -534,7 +633,7 @@ class SharedVariableSet extends Serializable{
       if(pair._2.sync){
         val pdva = new ProposalDeltaValueArray
         pdva.prefactor = pair._2.prefactor
-        pdva.array = new Array[Double](n)
+        pdva.array = new Array[Float](n)
         var i = 0
         while(i < n){
           val dv = pair._2.array(i)
@@ -556,7 +655,7 @@ class SharedVariableSet extends Serializable{
           }
         }
         else{
-          val varArray = new Array[Double](pair._2.array.length)
+          val varArray = new Array[Float](pair._2.array.length)
           var i = 0
           while(i < n){
             val dv = pair._2.array(i)

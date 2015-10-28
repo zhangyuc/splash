@@ -9,8 +9,9 @@ import scala.reflect.ClassTag
 
 class Record[U: ClassTag] extends Serializable{
   var line : U = _
-  var variable : Array[(String, Double)] = null
-  var delayedDelta : Array[((String,Int), Double)] = null
+  var variable : Array[(String, Float)] = null
+  var variableArray : Array[(String, Array[Float])] = null
+  var delayedDelta : Array[((String,Int), Float)] = null
   
   override def clone() = {
     val nr = new Record[U]

@@ -2,13 +2,13 @@ package splash.core
 import scala.collection.mutable._
 
 class ProposalDeltaValue extends Serializable{
-  var delta = 0.0
-  var prefactor = 1.0
+  var delta = 0.0f
+  var prefactor = 1.0f
 }
 
 class ProposalDeltaValueArray extends Serializable{
-  var prefactor = 1.0
-  var array : Array[Double] = null
+  var prefactor = 1.0f
+  var array : Array[Float] = null
 }
 
 class Proposal extends Serializable{
