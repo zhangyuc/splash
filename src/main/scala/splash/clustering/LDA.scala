@@ -1,11 +1,12 @@
-package splash.sampling
+package splash.clustering
 import scala.util.Random
-import org.apache.spark.mllib.linalg.{Vectors,Vector,DenseVector,SparseVector}
+import org.apache.spark.mllib.linalg.{Matrix,Matrices,Vectors,Vector,DenseVector,SparseVector}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.HashPartitioner
+import breeze.numerics.digamma
 import splash.core._
 
-class WordToken(initWordId : Int, initWordCount : Int, initTopicId : Int) extends Serializable {
+class WordToken(initWordId : Int, initWordCount : Int, initTopicId : Array[Int] = null) extends Serializable {
   var wordId = initWordId
   var wordCount = initWordCount
   var topicId = initTopicId 
@@ -13,18 +14,20 @@ class WordToken(initWordId : Int, initWordCount : Int, initTopicId : Int) extend
 
 /*
  * This class implements the Collapsed Gibbs Sampling algorithm for fitting the Latent Dirichlet Allocation 
- * (LDA) model. To use this package, the dataset should be an instance of RDD[(docId, wordToken)]. The docId 
+ * (LDA) model. To use this package, the dataset should be an instance of RDD[(docId, Array[wordToken])]. The docId 
  * is the ID of the document, the wordToken represents a word token in the document.
  * 
  * docId, wordId and topicId should be integers starting from zero. The Collapsed Gibbs Sampling algorithm 
- * resamples the topicId for each word. Call the sample method to start running the algorithm.
+ * resamples the topicId for each word.
  */
 
-class CollapsedGibbsSamplingForLDA {
+class LDA {
   var iters = 10
-  var process : ((Int, WordToken), Double, SharedVariableSet, LocalVariableSet ) => Unit = null
-  var evalLoss : ((Int, WordToken), SharedVariableSet, LocalVariableSet ) => Double = null
+  var process : ((Int, Array[WordToken]), Double, SharedVariableSet, LocalVariableSet ) => Unit = null
+  var evalLoss : ((Int, Array[WordToken]), SharedVariableSet, LocalVariableSet ) => Double = null
   var printDebugInfo = false
+  var maxThreadNum = 0
+  var topicsMatrix : Array[Array[Double]] = null
   
   // LDA parameters
   var alpha = 0.0
@@ -37,14 +40,15 @@ class CollapsedGibbsSamplingForLDA {
    * The sample method returns an RDD[(docId, wordToken)] object in which the 
    * topic of each word token has been resampled. 
    */
-  def sample(data: RDD[(Int, WordToken)]) = {
+  def train(data: RDD[(Int, Array[WordToken])]) = {
     val numPartitions = data.partitions.length
-    val n = data.map( x => x._2.wordCount ).sum()
+    var d_train = data.map( pair => if (pair._1 >= 0) 1 else 0 ).sum()
+    var d_test = data.count - d_train
+    var n_test = data.map( pair => {var sum = 0; for(token <- pair._2) if(pair._1 < 0 && (pair._1 + token.wordId).hashCode() % 10 == 0) sum += token.wordCount; sum} ).sum()
+    val vocabSize = data.map( pair => { var max = 0; for( token <- pair._2 ) max = math.max(max, token.wordId); max } ).max() + 1
+    val numDocuments = data.map( pair => pair._1 ).max() + 1
     
     val numTopics = this.numTopics
-    val tmpPair = data.map( x => (x._1, x._2.wordId) ).reduce((pair1, pair2) => (math.max(pair1._1, pair2._1), math.max(pair1._2, pair2._2)))
-    val numDocuments = tmpPair._1 + 1
-    val vocabSize = tmpPair._2 + 1
     this.numDocuments = numDocuments
     this.vocabSize = vocabSize
     
@@ -53,52 +57,68 @@ class CollapsedGibbsSamplingForLDA {
     if(printDebugInfo){
       println("numDocuments = " + numDocuments)
       println("vocabSize = " + vocabSize)
-      println("n = " + n)
+      println("document for training = " + d_train)
+      println("document for testing = " + d_test)
     }
 
-    val paramRdd = new ParametrizedRDD(data.partitionBy(new HashPartitioner(numPartitions)))
+    val paramRdd = new ParametrizedRDD(data)
     setProcessFunction()
     setEvalFunction()
     
+    // initialization
+    val alpha = this.alpha
+    val beta = this.beta
     paramRdd.foreachSharedVariable( sharedVar => {
-      for(wordId <- 0 until vocabSize) sharedVar.declareArray("w"+wordId, numTopics)
-      for(docId <- 0 until numDocuments) sharedVar.declareArray("d"+docId, numTopics)
-      sharedVar.declareArray("ws", numTopics)
-      sharedVar.declareArray("ds", numDocuments)
+      for(wordId <- 0 until vocabSize){
+        sharedVar.setArray("w"+wordId, Array.fill(numTopics)(beta))
+      } 
+      sharedVar.setArray("ws", Array.fill(numTopics)(beta * vocabSize))
     })
     
-    paramRdd.foreach((record, sharedVar,  localVar) => {
-      val docId = record._1
-      val wordId = record._2.wordId
-      val topicId = record._2.topicId
-      val weight = record._2.wordCount
-      
-      // update shared variables
-      sharedVar.addArrayElement( "w"+wordId, topicId, weight)
-      sharedVar.addArrayElement( "d"+docId, topicId, weight)
-      sharedVar.addArrayElement( "ws", topicId, weight)
-      sharedVar.addArrayElement( "ds", docId, weight)
-      sharedVar.dontSyncArray("d"+docId)
-      
-      // delayed update
-      sharedVar.delayedAddArrayElement( "w"+wordId, topicId, -weight)
-      sharedVar.delayedAddArrayElement( "d"+docId, topicId, -weight)
-      sharedVar.delayedAddArrayElement( "ws", topicId, -weight)
+    paramRdd.foreach((doc, sharedVar,  localVar) => {
+      val docId = doc._1
+      if(docId >= 0)
+      {
+        for(token <- doc._2){
+          val wordId = token.wordId
+          var topicId = token.topicId
+          val weight = token.wordCount
+          val subweight = token.wordCount.toDouble / topicId.length
+          
+          // update shared variables
+          for(id <- topicId){
+            sharedVar.addArrayElement( "w"+wordId, id, subweight)
+            sharedVar.addArrayElement( "ws", id, subweight)
+          }
+        }
+      }
+      else{
+        // DO NOTHING FOR TEST DOCUMENT
+      }
     })
     paramRdd.syncSharedVariable()
-    
     paramRdd.process_func = this.process
     paramRdd.evaluate_func = this.evalLoss
     
-    val spc = (new SplashConf).set("auto.thread", false)
+    val spc = (new SplashConf).set("auto.thread", false).set("max.thread.num", this.maxThreadNum)
     for( i <- 0 until this.iters ){
       paramRdd.run(spc)
       if(printDebugInfo){
-        val loss = math.exp( paramRdd.map(evalLoss).sum() / n )
-        println("%5.3f\t%5.8f\t".format(paramRdd.totalTimeEllapsed, loss) + paramRdd.lastIterationThreadNumber)
+        val loss = - paramRdd.map(evalLoss).sum() / n_test
+        println("%5.3f\t%5.8f".format(paramRdd.totalTimeEllapsed, loss))
       }
     }
-    paramRdd.map((record,svar,lvar) => record)
+    
+    val sharedVar = paramRdd.getSharedVariable();
+    val wordSumCount = sharedVar.getArray("ws");
+    topicsMatrix = new Array[Array[Double]](vocabSize)
+    for(wordId <- 0 until vocabSize){
+      topicsMatrix(wordId) = sharedVar.getArray("w"+wordId)
+      for(tid <- 0 until numTopics){
+        topicsMatrix(wordId)(tid) /= wordSumCount(tid)
+      }
+    }
+    paramRdd.map( (record,svar,lvar) => record )
   }
   
   private def setProcessFunction(){    
@@ -107,46 +127,78 @@ class CollapsedGibbsSamplingForLDA {
     val numTopics = this.numTopics
     val numDocument = this.numDocuments
     val vocabSize = this.vocabSize    
-    this.process = (record: (Int, WordToken), weight: Double, sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
-      val docId = record._1
-      val wordId = record._2.wordId
-      val count = record._2.wordCount * weight
+    this.process = (doc: (Int, Array[WordToken]), weight: Double, sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
+      val docId = doc._1
+      val tokenArray = doc._2
       
-      // calculate the probability that this word belongs to some topic
-      val wtValue = sharedVar.getArray("w"+wordId)
-      val dtValues = sharedVar.getArray("d"+docId)
-      val wtSumValues = sharedVar.getArray("ws")
-      
-      var sumProb = 0.0
-      val prob = new Array[Double](numTopics)
-      for(tid <- 0 until numTopics){
-        prob(tid) = (dtValues(tid) + alpha) * (wtValue(tid) + beta) / (wtSumValues(tid) + beta * vocabSize)
-        sumProb += prob(tid)
+      if(docId >= 0){
+        // reshuffle the document
+        var length = tokenArray.length
+        for(i <- 0 until length - 1){
+          val randi = Random.nextInt(length - i)
+          val tmp = tokenArray(length - i - 1)
+          tokenArray(length - i - 1) = tokenArray(randi)
+          tokenArray(randi) = tmp
+        }
+        
+        // construct document-topic table
+        val dtValues = Array.fill(numTopics)(alpha)
+        for(token <- tokenArray){
+          val subweight = token.wordCount.toDouble / token.topicId.length
+          for(id <- token.topicId) dtValues(id) += subweight
+        }
+        
+        // sample new topics for the document
+        for(i <- 0 until tokenArray.length){
+          val token = tokenArray(i)
+          val wordId = token.wordId
+        
+          // execute delayed update
+          val subweight = token.wordCount.toDouble / token.topicId.length
+          for(id <- token.topicId){
+            if(id >= 0){
+              dtValues(id) -= subweight
+              sharedVar.executeDelayedAddArrayElement( "w"+wordId, id, -subweight) 
+              sharedVar.executeDelayedAddArrayElement( "ws", id, -subweight)
+            }
+          }
+          
+          // calculate the probability distribution for the sampling
+          val wtValue = sharedVar.getArray("w"+wordId)
+          val wtSumValues = sharedVar.getArray("ws")
+          
+          var sumProb = 0.0
+          val prob = new Array[Double](numTopics)
+          for(tid <- 0 until numTopics){
+            val p = dtValues(tid) * wtValue(tid) / wtSumValues(tid)
+            prob(tid) = p
+            sumProb += p
+          }
+          
+          // sample new topics for this word
+          val subcount = token.wordCount.toDouble / token.topicId.length * weight
+          for(i <- 0 until token.topicId.length){
+            val rand = Random.nextDouble() * sumProb
+            var topicId = 0
+            var accuProb = prob(0)
+            while( rand >= accuProb){
+              topicId += 1
+              accuProb += prob(topicId)
+            }
+            
+            // update local variables
+            token.topicId(i) = topicId
+            dtValues(topicId) += subcount
+            
+            // update shared variables
+            sharedVar.addArrayElement( "w"+wordId, topicId, subcount)
+            sharedVar.addArrayElement( "ws", topicId, subcount)
+          }
+        }
       }
-      for(tid <- 0 until numTopics){
-        prob(tid) /= sumProb
+      else{
+        // DO NOTHING FOR TEST DOCUMENT
       }
-      
-      // sample the new topic for this word
-      val rand = Random.nextDouble()
-      var topicId = 0
-      var accuProb = prob(0)
-      while( rand >= accuProb){
-        topicId += 1
-        accuProb += prob(topicId)
-      }
-      record._2.topicId = topicId
-      
-      // update shared variables
-      sharedVar.addArrayElement( "w"+wordId, topicId, count)
-      sharedVar.addArrayElement( "ws", topicId, count)
-      sharedVar.addArrayElement( "d"+docId, topicId, count)
-      sharedVar.dontSyncArray("d"+docId)
-      
-      // delayed update
-      sharedVar.delayedAddArrayElement( "w"+wordId, topicId, -count)
-      sharedVar.delayedAddArrayElement( "ws", topicId, -count)
-      sharedVar.delayedAddArrayElement( "d"+docId, topicId, -count)
     }
   }
   
@@ -157,25 +209,101 @@ class CollapsedGibbsSamplingForLDA {
     val numDocument = this.numDocuments
     val vocabSize = this.vocabSize
     
-    this.evalLoss = (record: (Int, WordToken), sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
-      val docId = record._1
-      val wordId = record._2.wordId
-      val count = record._2.wordCount
+    this.evalLoss = (doc: (Int, Array[WordToken]), sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
+      val docId = doc._1
       
-      // calculate the probability that this word belongs to some topic
-      val wtValue = sharedVar.getArray("w"+wordId)
-      val dtValues = sharedVar.getArray("d"+docId)
-      val wtSumValues = sharedVar.getArray("ws")
-      val dtSum = sharedVar.getArrayElement("ds", docId)
-      
-      var sumProb = 0.0
-      val prob = new Array[Double](numTopics)
-      for(tid <- 0 until numTopics){
-        prob(tid) = (dtValues(tid) + alpha) / (dtSum + alpha * numTopics) * (wtValue(tid) + beta) / (wtSumValues(tid) + beta * vocabSize)
-        sumProb += prob(tid)
+      if(docId < 0){
+        val tokenArray = doc._2
+        val length = tokenArray.length
+        var loss = 0.0
+        val isObserved = (tk : WordToken) => {
+          if((docId + tk.wordId).hashCode() % 10 != 0) true
+          else false
+        }
+        
+        // construct word-topic table
+        val wtValue = new Array[Array[Double]](length)
+        for(i <- 0 until length){
+          wtValue(i) = sharedVar.getArray("w"+tokenArray(i).wordId)
+        }
+        val wtSumValues = sharedVar.getArray("ws")
+        
+        val betaSum = new Array[Double](numTopics)
+        for(tid <- 0 until numTopics) betaSum(tid) = math.exp(digamma(wtSumValues(tid)))
+        val beta = new Array[Array[Double]](length)
+        for(i <- 0 until length){
+          beta(i) = new Array[Double](numTopics)
+          for(tid <- 0 until numTopics) beta(i)(tid) = math.exp(digamma(wtValue(i)(tid))) / betaSum(tid)
+        }
+        
+        // construct document-topic table
+        var gamma = Array.fill(numTopics)(alpha)
+        var gammaSum = alpha * numTopics
+        for(token <- tokenArray){
+          if(isObserved(token)){
+            gammaSum += token.wordCount.toDouble
+            for(tid <- 0 until numTopics){
+              gamma(tid) += token.wordCount.toDouble / numTopics
+            }
+          }
+        }
+        
+        // recompute gamma until convergence
+        for(iter <- 0 until 10){
+          val new_gamma = Array.fill(numTopics)(alpha)
+          val digamma_gamma = new Array[Double](numTopics)
+          for(tid <- 0 until numTopics) digamma_gamma(tid) = math.exp(digamma(gamma(tid)))
+            
+          for(i <- 0 until tokenArray.length){
+            val token = tokenArray(i)
+            if(isObserved(token)){
+              val phi = new Array[Double](numTopics)
+              var sum = 0.0
+              var tid = 0
+              while(tid < numTopics){
+                phi(tid) = beta(i)(tid) * digamma_gamma(tid)
+                sum += phi(tid)
+                tid += 1
+              }
+              val scale = token.wordCount / sum
+              tid = 0
+              while(tid < numTopics){
+                new_gamma(tid) += phi(tid) * scale
+                tid += 1
+              }
+            }
+          }
+          gamma = new_gamma
+        }
+        
+        // compute log-likelihood on test data
+        for(i <- 0 until length){
+          val token = tokenArray(i)
+          if(!isObserved(token)){
+            var sumProb = 0.0
+            val prob = new Array[Double](numTopics)
+            for(tid <- 0 until numTopics){
+              prob(tid) = gamma(tid) * wtValue(i)(tid) / (gammaSum * wtSumValues(tid))
+              sumProb += prob(tid)
+            }
+            loss += -math.log(sumProb) * token.wordCount
+          }
+        }
+        loss
       }
-      -math.log(sumProb)*count
+      else{
+        // DO NOTHING FOR TRAINING DOCUMENT
+        0.0
+      }
     }
+  }
+  
+  /*
+   * set the maximum number of threads to run. The default value is equal to the number of Parametrized RDD partitions.
+   */
+  def setMaxThreadNum(maxThreadNum: Int) = {
+    this.maxThreadNum = maxThreadNum
+    this
   }
   
   /*

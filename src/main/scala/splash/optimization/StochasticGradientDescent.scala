@@ -119,7 +119,7 @@ class StochasticGradientDescent {
           val s = sharedVar.getArrayElements("s", indices)
           k = 0
           while(k < n){
-            values(k) *= - actual_stepsize / math.sqrt(s(k) + 1e-16)
+            values(k) *= - actual_stepsize / math.sqrt(s(k) + 1e-16f)
             k += 1
           }
           sharedVar.addArrayElements("w", indices, values)
