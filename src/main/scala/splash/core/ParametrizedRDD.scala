@@ -93,7 +93,7 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
       array.iterator
     })
 
-    val tmp = worksets.zipPartitions(reshuffled_data)( (workset_iter, iter) => {
+    worksets.zipPartitions(reshuffled_data)( (workset_iter, iter) => {
       val workset = workset_iter.next()
       workset.recordArray = iter.toArray
       workset.length = workset.recordArray.length
@@ -115,7 +115,7 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
       array.iterator
     }), numOfWorkset)
 
-    val tmp = worksets.zipPartitions(reshuffled_data)( (workset_iter, iter) => {
+    worksets.zipPartitions(reshuffled_data)( (workset_iter, iter) => {
       val workset = workset_iter.next()
       workset.recordArray = iter.toArray
       workset.length = workset.recordArray.length
@@ -352,9 +352,9 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
 
     // prepare broadcast
     val func = process_func
-    val eval_func = evaluate_func
+    // val eval_func = evaluate_func
     val sc = worksets.context
-    val process_rand_seed = rnd.nextInt(65536)
+    // val process_rand_seed = rnd.nextInt(65536)
     val iterStartTime = (new Date).getTime
 
     val maxThread = {
@@ -454,7 +454,7 @@ class ParametrizedRDD[T: ClassTag] extends Serializable {
     }
     else{
       // merge proposals inside the same group
-      val shuffledIndex = getShuffledIndex(maxThread)
+      // val shuffledIndex = getShuffledIndex(maxThread)
       val groupMergedPropArray = worksets.map( workset => (workset.trainGroupId, workset.prop) ).filter( _._2 != null ).reduceByKey( _ add _ ).collect()
       val groupMergedPropMapRaw = new HashMap[Int, Proposal]
       for(pair <- groupMergedPropArray) groupMergedPropMapRaw.put(pair._1, pair._2)

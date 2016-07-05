@@ -24,15 +24,15 @@ class SharedVariableBackup extends Serializable{
 }
 
 class SharedVariableSet extends Serializable{
-  var variable = new HashMap[String, Float]
-  var delta = new HashMap[String, DeltaValue]
+  private var variable = new HashMap[String, Float]
+  private val delta = new HashMap[String, DeltaValue]
   var variableArray = new HashMap[String, Array[Float]]
-  var deltaArray = new HashMap[String, DeltaValueArray]
-  var loss = 0.0
+  private val deltaArray = new HashMap[String, DeltaValueArray]
+  // private val loss = 0.0
 
-  var delayedDelta : HashMap[(String, Int), Float] = null
+  private var delayedDelta : HashMap[(String, Int), Float] = null
   var delayedAddShrinkFactor = 1.0f
-  var backup = new HashMap[String, SharedVariableBackup]
+  private val backup = new HashMap[String, SharedVariableBackup]
 
   // variables for element counting
   var batchSize = 0
@@ -70,7 +70,7 @@ class SharedVariableSet extends Serializable{
   }
 
   def getStaleArray(key:String) = {
-    variableArray.applyOrElse(key, (x:Any)=>null)
+    variableArray.applyOrElse(key, (_: Any)=>null)
   }
 
   def setArray(key:String, value:Array[Float]): Unit = {
@@ -183,10 +183,10 @@ class SharedVariableSet extends Serializable{
   def get(key:String) = {
     if(delta.contains(key)){
       val dv = delta(key)
-      dv.prefactor * variable.applyOrElse(key, (x:Any) => 0.0f) + dv.delta.toDouble + dv.unweightedDelta
+      dv.prefactor * variable.applyOrElse(key, (_:Any) => 0.0f) + dv.delta.toDouble + dv.unweightedDelta
     }
     else{
-      variable.applyOrElse(key, (x:Any) => 0.0f)
+      variable.applyOrElse(key, (_:Any) => 0.0f)
     }
   }
 
@@ -194,7 +194,7 @@ class SharedVariableSet extends Serializable{
    * Return the array associated with the key. It will return null if the array has not been declared.
    */
   def getArray(key:String) = {
-    val varArray = variableArray.applyOrElse(key, (x:Any) => null)
+    val varArray = variableArray.applyOrElse(key, (_:Any) => null)
     if(deltaArray.contains(key)){
       val deltaValueObject = deltaArray(key)
       val n = deltaValueObject.array.length
@@ -239,7 +239,7 @@ class SharedVariableSet extends Serializable{
   }
 
   def getFloatArray(key:String) = {
-    val varArray = variableArray.applyOrElse(key, (x:Any) => null)
+    val varArray = variableArray.applyOrElse(key, (_: Any) => null)
     if(deltaArray.contains(key)){
       val deltaValueObject = deltaArray(key)
       val n = deltaValueObject.array.length
@@ -287,7 +287,7 @@ class SharedVariableSet extends Serializable{
    * Return the array element with index ind. It will return 0 if the array has not been declared.
    */
   def getArrayElement(key:String, index:Int) = {
-    val varArray = variableArray.applyOrElse(key, (x:Any) => null)
+    val varArray = variableArray.applyOrElse(key, (_: Any) => null)
     val varArrayElem = {
       if(varArray != null) varArray(index)
       else 0.0
@@ -308,7 +308,7 @@ class SharedVariableSet extends Serializable{
    */
   def getArrayElements(key:String, indices:Array[Int]) = {
     val values = new Array[Double](indices.length)
-    val varArray = variableArray.applyOrElse(key, (x:Any) => null)
+    val varArray = variableArray.applyOrElse(key, (_:Any) => null)
     val n = indices.length
     if(varArray != null){
       var i = 0
@@ -573,7 +573,7 @@ class SharedVariableSet extends Serializable{
   private[splash] def updateVariableByProposal(prop:Proposal): Unit = {
     for( pair <- prop.delta ){
       val key = pair._1
-      variable.put(key, pair._2.prefactor * variable.applyOrElse(key, (x:Any) => 0.0f) + pair._2.delta )
+      variable.put(key, pair._2.prefactor * variable.applyOrElse(key, (_: Any) => 0.0f) + pair._2.delta )
     }
 
     for( pair <- prop.deltaArray ){
@@ -623,7 +623,7 @@ class SharedVariableSet extends Serializable{
       }
       else{
         val key = pair._1
-        variable.put(key, pair._2.prefactor * variable.applyOrElse(key, (x:Any) => 0.0f) + pair._2.delta / weight + pair._2.unweightedDelta  )
+        variable.put(key, pair._2.prefactor * variable.applyOrElse(key, (_: Any) => 0.0f) + pair._2.delta / weight + pair._2.unweightedDelta  )
       }
     }
 

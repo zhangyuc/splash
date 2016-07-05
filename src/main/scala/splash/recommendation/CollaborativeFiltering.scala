@@ -23,16 +23,16 @@ class UserRating(initUser : Int, initRatings : Array[(Int,Double)], initValidati
 }
 
 class CollaborativeFiltering {
-  var iters = 10
-  var stepsize = 1.0
-  var dataPerIteration = 1.0
-  var maxThreadNum = 0
-  var rank = 0
-  var regParam = 0.01
-  var autoThread = true
-  var process : (UserRating, Double, SharedVariableSet, LocalVariableSet ) => Unit = null
-  var evalLoss : (UserRating, SharedVariableSet, LocalVariableSet ) => Double = null
-  var printDebugInfo = false
+  private var iters = 10
+  private var stepsize = 1.0
+  private var dataPerIteration = 1.0
+  private var maxThreadNum = 0
+  private var rank = 0
+  private var regParam = 0.01
+  private var autoThread = true
+  private var process : (UserRating, Double, SharedVariableSet, LocalVariableSet ) => Unit = null
+  private var evalLoss : (UserRating, SharedVariableSet, LocalVariableSet ) => Double = null
+  private var printDebugInfo = false
 
   /*
    * start running the AdaGrad SGD algorithm.
@@ -116,7 +116,7 @@ class CollaborativeFiltering {
     val stepsize = this.stepsize
     val regParam = this.regParam
 
-    this.process = (entry: UserRating, weight: Double, sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
+    this.process = (entry: UserRating, weight: Double, sharedVar : SharedVariableSet,  _: LocalVariableSet ) => {
       val user_id = entry.userId
       val ratings = entry.ratings
       val n = ratings.length
@@ -182,11 +182,11 @@ class CollaborativeFiltering {
 
   private def setEvalFunction(): Unit = {
     val rank = this.rank
-    val stepsize = this.stepsize
+    // val stepsize = this.stepsize
     val regParam = this.regParam
 
-    this.evalLoss = (entry: UserRating, sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
-      val user_id = entry.userId
+    this.evalLoss = (entry: UserRating, sharedVar : SharedVariableSet,  _: LocalVariableSet ) => {
+      // val user_id = entry.userId
       val ratings = entry.ratings
       val n = ratings.length
 

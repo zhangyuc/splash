@@ -30,7 +30,7 @@ abstract class Gradient extends Serializable {
 abstract class BinaryLinearModelGradient extends Gradient {
   def requestWeightIndices(data: Vector): Array[Int] = {
     data match {
-      case dd : DenseVector => null
+      case _ : DenseVector => null
       case sd : SparseVector => sd.indices
       case _ => throw new IllegalArgumentException(s"doesn't support ${data.getClass}.")
     }
@@ -55,7 +55,7 @@ class LogisticGradient extends BinaryLinearModelGradient{
 class MultiClassLogisticGradient(numClasses: Int) extends Gradient{
   def requestWeightIndices(data: Vector): Array[Int] = {
     data match {
-      case dd : DenseVector => throw new IllegalArgumentException(s"data only supports sparse vector but got type ${data.getClass}.")
+      case _ : DenseVector => throw new IllegalArgumentException(s"data only supports sparse vector but got type ${data.getClass}.")
       case sd : SparseVector => {
         val sdIndices = sd.indices
         val n = sdIndices.length
@@ -162,6 +162,6 @@ class LeastSquaresGradient extends BinaryLinearModelGradient {
     val diff = dot(data, weights) - label
     val loss = diff * diff / 2.0
     val gradient = data.copy
-    (yax(diff, data), loss)
+    (yax(diff, gradient), loss)
   }
 }

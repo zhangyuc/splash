@@ -23,7 +23,7 @@ class LocalVariableSet extends Serializable{
    * Return the value of associated with the key. The value is 0 if the variable has never been set.
    */
   def get(key:String) = {
-    variable.applyOrElse(key, (x:Any) => 0.0f).toDouble
+    variable.applyOrElse(key, (_:Any) => 0.0f).toDouble
   }
 
   /**
@@ -52,7 +52,7 @@ class LocalVariableSet extends Serializable{
    * Convert variable to an array of key-value pairs.
    */
   def variableToArray () = {
-    val n = variable.count( a => true )
+    val n = variable.count( _ => true )
     if( n > 0)
     {
       val array = new Array[ (String, Float) ](n)
@@ -72,7 +72,7 @@ class LocalVariableSet extends Serializable{
    * Convert variableArray to an array of key-value pairs.
    */
   def variableArrayToArray () = {
-    val n = variableArray.count( a => true )
+    val n = variableArray.count( _ => true )
     if( n > 0)
     {
       val array = new Array[ (String, Array[Float])](n)

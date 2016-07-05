@@ -31,12 +31,12 @@ class WorkSet[U: ClassTag] extends Serializable{
   var recordArray : Array[Record[U]] = null
   var length : Long = 0
   var iterator = 0
-  var cp = 0
-  var seed = new Random
+  private var cp = 0
+  // private var seed = new Random
 
   // for auto thread detection
-  var backupArray : Array[Record[U]] = null
-  var backupFirstIndex = 0
+  private var backupArray : Array[Record[U]] = null
+  private var backupFirstIndex = 0
   var trainGroupId = 0
   var testGroupId = 0
 

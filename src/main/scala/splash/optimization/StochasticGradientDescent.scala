@@ -11,16 +11,16 @@ import splash.core._
  */
 
 class StochasticGradientDescent {
-  var gradient : Gradient = null
-  var iters = 10
-  var stepsize = 1.0
-  var dataPerIteration = 1.0
-  var maxThreadNum = 0
-  var dimension = 0
-  var autoThread = true
-  var process : ((Double, Vector), Double, SharedVariableSet, LocalVariableSet ) => Unit = null
-  var evalLoss : ((Double, Vector), SharedVariableSet, LocalVariableSet ) => Double = null
-  var printDebugInfo = false
+  private var gradient : Gradient = null
+  private var iters = 10
+  private var stepsize = 1.0
+  private var dataPerIteration = 1.0
+  private var maxThreadNum = 0
+  private var dimension = 0
+  private var autoThread = true
+  private var process : ((Double, Vector), Double, SharedVariableSet, LocalVariableSet ) => Unit = null
+  private var evalLoss : ((Double, Vector), SharedVariableSet, LocalVariableSet ) => Double = null
+  private var printDebugInfo = false
 
   /*
    * start running the AdaGrad SGD algorithm.
@@ -70,7 +70,7 @@ class StochasticGradientDescent {
     val dimension = this.dimension
     val stepsize = this.stepsize
 
-    this.process = (entry: (Double, Vector), weight: Double, sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
+    this.process = (entry: (Double, Vector), weight: Double, sharedVar : SharedVariableSet,  _: LocalVariableSet ) => {
       val label = entry._1
       val data = entry._2
 
@@ -131,7 +131,7 @@ class StochasticGradientDescent {
   private def setEvalFunction(): Unit = {
     val gradientObj = this.gradient
     val dimension = this.dimension
-    this.evalLoss = (entry: (Double, Vector), sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
+    this.evalLoss = (entry: (Double, Vector), sharedVar : SharedVariableSet,  _: LocalVariableSet ) => {
       val label = entry._1
       val data = entry._2
       // compute gradient

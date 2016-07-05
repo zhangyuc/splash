@@ -24,29 +24,29 @@ class WordToken(initWordId : Int, initWordCount : Int, initTopicId : Array[Int] 
  */
 
 class LDA {
-  var iters = 10
-  var process : ((Int, Array[WordToken]), Double, SharedVariableSet, LocalVariableSet ) => Unit = (_, _, _, _) => ()
-  var evalLoss : ((Int, Array[WordToken]), SharedVariableSet, LocalVariableSet ) => Double = null
-  var printDebugInfo = false
-  var maxThreadNum = 0
-  var topicsMatrix : Array[Array[Double]] = null
+  private var iters = 10
+  private var process : ((Int, Array[WordToken]), Double, SharedVariableSet, LocalVariableSet ) => Unit = (_, _, _, _) => ()
+  private var evalLoss : ((Int, Array[WordToken]), SharedVariableSet, LocalVariableSet ) => Double = null
+  private var printDebugInfo = false
+  private var maxThreadNum = 0
+  private var topicsMatrix : Array[Array[Double]] = null
 
   // LDA parameters
-  var alpha = 0.0
-  var beta = 0.0
-  var numTopics = 0
-  var numDocuments = 0
-  var vocabSize = 0
+  private var alpha = 0.0
+  private var beta = 0.0
+  private var numTopics = 0
+  private var numDocuments = 0
+  private var vocabSize = 0
 
   /*
    * The sample method returns an RDD[(docId, wordToken)] object in which the
    * topic of each word token has been resampled.
    */
   def train(data: RDD[(Int, Array[WordToken])]) = {
-    val numPartitions = data.partitions.length
-    var d_train = data.map( pair => if (pair._1 >= 0) 1 else 0 ).sum()
-    var d_test = data.count - d_train
-    var n_test = data.map( pair => {var sum = 0; for(token <- pair._2) if(pair._1 < 0 && (pair._1 + token.wordId).hashCode() % 10 == 0) sum += token.wordCount; sum} ).sum()
+    // val numPartitions = data.partitions.length
+    val d_train = data.map( pair => if (pair._1 >= 0) 1 else 0 ).sum()
+    val d_test = data.count - d_train
+    val n_test = data.map( pair => {var sum = 0; for(token <- pair._2) if(pair._1 < 0 && (pair._1 + token.wordId).hashCode() % 10 == 0) sum += token.wordCount; sum} ).sum()
     val vocabSize = data.map( pair => { var max = 0; for( token <- pair._2 ) max = math.max(max, token.wordId); max } ).max() + 1
     val numDocuments = data.map( pair => pair._1 ).max() + 1
 
@@ -54,8 +54,8 @@ class LDA {
     this.numDocuments = numDocuments
     this.vocabSize = vocabSize
 
-    val dtLength = numDocuments * numTopics + numDocuments
-    val wtLength = vocabSize * numTopics + numTopics
+    // val dtLength = numDocuments * numTopics + numDocuments
+    // val wtLength = vocabSize * numTopics + numTopics
     if(printDebugInfo){
       println("numDocuments = " + numDocuments)
       println("vocabSize = " + vocabSize)
@@ -68,7 +68,7 @@ class LDA {
     setEvalFunction()
 
     // initialization
-    val alpha = this.alpha
+    // val alpha = this.alpha
     val beta = this.beta
     paramRdd.foreachSharedVariable( sharedVar => {
       for(wordId <- 0 until vocabSize){
@@ -77,14 +77,14 @@ class LDA {
       sharedVar.setArray("ws", Array.fill(numTopics)(beta * vocabSize))
     })
 
-    paramRdd.foreach((doc, sharedVar,  localVar) => {
+    paramRdd.foreach((doc, sharedVar,  _) => {
       val docId = doc._1
       if(docId >= 0)
       {
         for(token <- doc._2){
           val wordId = token.wordId
           var topicId = token.topicId
-          val weight = token.wordCount
+          // val weight = token.wordCount
           val subweight = token.wordCount.toDouble / topicId.length
 
           // update shared variables
@@ -120,16 +120,16 @@ class LDA {
         topicsMatrix(wordId)(tid) /= wordSumCount(tid)
       }
     }
-    paramRdd.map( (record,svar,lvar) => record )
+    paramRdd.map( (record, _, _) => record )
   }
 
   private def setProcessFunction(): Unit = {
     val alpha = this.alpha
-    val beta = this.beta
+    // val beta = this.beta
     val numTopics = this.numTopics
-    val numDocument = this.numDocuments
-    val vocabSize = this.vocabSize
-    this.process = (doc: (Int, Array[WordToken]), weight: Double, sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
+    // val numDocument = this.numDocuments
+    // val vocabSize = this.vocabSize
+    this.process = (doc: (Int, Array[WordToken]), weight: Double, sharedVar : SharedVariableSet,  _: LocalVariableSet ) => {
       val docId = doc._1
       val tokenArray = doc._2
 
@@ -206,12 +206,12 @@ class LDA {
 
   private def setEvalFunction(): Unit = {
     val alpha = this.alpha
-    val beta = this.beta
+    // val beta = this.beta
     val numTopics = this.numTopics
-    val numDocument = this.numDocuments
-    val vocabSize = this.vocabSize
+    // val numDocument = this.numDocuments
+    // val vocabSize = this.vocabSize
 
-    this.evalLoss = (doc: (Int, Array[WordToken]), sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
+    this.evalLoss = (doc: (Int, Array[WordToken]), sharedVar : SharedVariableSet,  _: LocalVariableSet ) => {
       val docId = doc._1
 
       if(docId < 0){
