@@ -1,4 +1,4 @@
-name := "Splash"
+name := "splash"
 
 version := "0.2.0"
 
@@ -9,11 +9,12 @@ artifactName := { (sv: ScalaVersion, module: ModuleID, artifact: Artifact) =>
   artifact.name + "-" + module.revision + "." + artifact.extension
 }
 
-libraryDependencies += "org.apache.spark" %% "spark-core" % "1.6.1" % "provided"
+libraryDependencies += "org.apache.spark" %% "spark-core" % "1.6.1" // % "provided"
 
-libraryDependencies += "org.apache.spark" %% "spark-mllib" % "1.6.1" % "provided"
+libraryDependencies += "org.apache.spark" %% "spark-mllib" % "1.6.1" // % "provided"
 
 libraryDependencies  ++= Seq(
+            "com.nativelibs4java" %% "scalaxy-loops" % "[0.3.4,)",
             "org.scalanlp" %% "breeze" % "[0.11.2,)",
             "org.scalanlp" %% "breeze-natives" % "[0.11.2,)"
 )

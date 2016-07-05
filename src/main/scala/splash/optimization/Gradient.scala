@@ -1,6 +1,8 @@
 package splash.optimization
 import org.apache.spark.mllib.linalg.{Vectors,Vector,DenseVector,SparseVector}
 import Util.{log1pExp,yax,dot}
+import scalaxy.loops._
+import scala.language.postfixOps
 
 abstract class Gradient extends Serializable {
   /**
@@ -12,7 +14,7 @@ abstract class Gradient extends Serializable {
    * @return indices: Array[Int]
    */
   def requestWeightIndices(data: Vector) : Array[Int]
-  
+
   /**
    * Compute the gradient and the loss given the features of a single data point.
    *
@@ -53,13 +55,13 @@ class LogisticGradient extends BinaryLinearModelGradient{
 class MultiClassLogisticGradient(numClasses: Int) extends Gradient{
   def requestWeightIndices(data: Vector): Array[Int] = {
     data match {
-      case dd : DenseVector => throw new IllegalArgumentException("data only supports sparse vector but got type ${weights.getClass}.")
+      case dd : DenseVector => throw new IllegalArgumentException(s"data only supports sparse vector but got type ${data.getClass}.")
       case sd : SparseVector => {
         val sdIndices = sd.indices
         val n = sdIndices.length
         val N = data.size
         val indices = new Array[Int](n*(numClasses-1))
-        for(i <- 0 until numClasses-1){
+        for(i <- 0 until numClasses-1 optimized){
           var j = 0
           var base = i*n
           var Base = i*N
@@ -73,13 +75,13 @@ class MultiClassLogisticGradient(numClasses: Int) extends Gradient{
       case _ => throw new IllegalArgumentException(s"doesn't support ${data.getClass}.")
     }
   }
-  
+
   def compute(data: Vector, label: Double, weights: Vector): (Vector, Double) = {
     // marginY is margins(label - 1) in the formula.
     var marginY = 0.0
     var maxMargin = Double.NegativeInfinity
     var maxMarginIndex = 0
-    
+
     val sparseData = data.asInstanceOf[SparseVector]
     val sparseWeight = weights.asInstanceOf[SparseVector]
     val dataIndices = sparseData.indices
@@ -88,7 +90,7 @@ class MultiClassLogisticGradient(numClasses: Int) extends Gradient{
     val weightValues = sparseWeight.values
     val n = dataIndices.length
     val deltaValues = new Array[Double](n*(numClasses-1))
-    
+
     val margins = Array.tabulate(numClasses - 1) { i =>
       var margin = 0.0
       var base = i * n
@@ -107,23 +109,23 @@ class MultiClassLogisticGradient(numClasses: Int) extends Gradient{
     val sum = {
       var temp = 0.0
       if (maxMargin > 0) {
-        for (i <- 0 until numClasses - 1) {
+        for (i <- 0 until numClasses - 1 optimized) {
           margins(i) -= maxMargin
-          if (i == maxMarginIndex) {
-            temp += math.exp(-maxMargin)
+          temp += (if (i == maxMarginIndex) {
+            math.exp(-maxMargin)
           } else {
-            temp += math.exp(margins(i))
-          }
+            math.exp(margins(i))
+          })
         }
       } else {
-        for (i <- 0 until numClasses - 1) {
+        for (i <- 0 until numClasses - 1 optimized) {
           temp += math.exp(margins(i))
         }
       }
       temp
     }
-    
-    for (i <- 0 until numClasses - 1) {
+
+    for (i <- 0 until numClasses - 1 optimized) {
       val multiplier = math.exp(margins(i)) / (sum + 1.0) - {
         if (label != 0.0 && label == i + 1) 1.0 else 0.0
       }
@@ -132,7 +134,7 @@ class MultiClassLogisticGradient(numClasses: Int) extends Gradient{
       while(j < n){
         deltaValues(base+j) = multiplier * dataValues(j)
         j += 1
-        
+
       }
     }
     var loss = if (label > 0.0) math.log1p(sum) - marginY else math.log1p(sum)
@@ -147,7 +149,7 @@ class HingeGradient extends BinaryLinearModelGradient {
   def compute(data: Vector, label: Double, weights: Vector): (Vector, Double) = {
     val dotProduct = dot(data, weights)
     val labelScaled = 2 * label - 1.0
-    if (1.0 > labelScaled * dotProduct) {
+    if (labelScaled * dotProduct < 1.0) {
       (yax(-labelScaled, data), 1.0 - labelScaled * dotProduct)
     } else {
       (Vectors.sparse(weights.size, Array.empty, Array.empty), 0.0)
