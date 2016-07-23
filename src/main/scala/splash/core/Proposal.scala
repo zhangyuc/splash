@@ -14,12 +14,12 @@ class ProposalDeltaValueArray extends Serializable{
 class Proposal extends Serializable{
   var delta = new HashMap[String, ProposalDeltaValue]
   var deltaArray = new HashMap[String, ProposalDeltaValueArray]
-  
-  private[splash] def dispose() {
+
+  private[splash] def dispose(): Unit = {
     delta.clear()
     deltaArray.clear()
   }
-  
+
   private[splash] def add(prop2:Proposal) = {
     for(pair <- prop2.delta){
       val key = pair._1

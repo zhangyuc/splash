@@ -13,6 +13,8 @@ import com.github.fommil.netlib.LAPACK.{getInstance => lapack}
 import java.{util => ju}
 import org.apache.spark.rdd.RDD.doubleRDDToDoubleRDDFunctions
 import org.apache.spark.rdd.RDD.numericRDDToDoubleRDDFunctions
+import scalaxy.loops._
+import scala.language.postfixOps
 
 class UserRating(initUser : Int, initRatings : Array[(Int,Double)], initValidation: Array[(Int,Double)] = Array[(Int,Double)]()) extends Serializable{
   var userId = initUser
@@ -21,17 +23,17 @@ class UserRating(initUser : Int, initRatings : Array[(Int,Double)], initValidati
 }
 
 class CollaborativeFiltering {
-  var iters = 10
-  var stepsize = 1.0
-  var dataPerIteration = 1.0
-  var maxThreadNum = 0
-  var rank = 0
-  var regParam = 0.01
-  var autoThread = true
-  var process : (UserRating, Double, SharedVariableSet, LocalVariableSet ) => Unit = null
-  var evalLoss : (UserRating, SharedVariableSet, LocalVariableSet ) => Double = null
-  var printDebugInfo = false
-  
+  private var iters = 10
+  private var stepsize = 1.0
+  private var dataPerIteration = 1.0
+  private var maxThreadNum = 0
+  private var rank = 0
+  private var regParam = 0.01
+  private var autoThread = true
+  private var process : (UserRating, Double, SharedVariableSet, LocalVariableSet ) => Unit = null
+  private var evalLoss : (UserRating, SharedVariableSet, LocalVariableSet ) => Double = null
+  private var printDebugInfo = false
+
   /*
    * start running the AdaGrad SGD algorithm.
    */
@@ -46,13 +48,13 @@ class CollaborativeFiltering {
     val num_of_item = data.map( x => { var max = 0; for(r <- x.ratings) max = math.max(max, r._1); max} ).max()
     setProcessFunction()
     setEvalFunction()
-    
+
     if(printDebugInfo){
       println("num_of_item = " + num_of_item)
       println("instance for training = " + n_train)
       println("instance for testing = " + n_test)
     }
-    
+
     val rank = this.rank
     paramRdd.foreachSharedVariable((sharedVar: SharedVariableSet ) => {
       val rnd = new Random(1)
@@ -60,28 +62,28 @@ class CollaborativeFiltering {
       {
         val vi = new Array[Double](rank + 1)
         var sum = 0.0
-        for(i <- 0 until rank){
+        for(i <- 0 until rank optimized){
           val v = math.abs(rnd.nextGaussian())
           vi(i) = v
           sum += v * v
         }
         sum = math.sqrt(sum)
-        for(i <- 0 until rank) vi(i) = vi(i) / sum
+        for(i <- 0 until rank optimized) vi(i) = vi(i) / sum
         sharedVar.setArray("I" + item_id, vi)
       }
     })
     paramRdd.process_func = this.process
     paramRdd.evaluate_func = this.evalLoss
-    
+
     val spc = (new SplashConf).set("data.per.iteration", math.min(1, dataPerIteration)).set("max.thread.num", this.maxThreadNum).set("auto.thread", this.autoThread)
     for( i <- 0 until this.iters ){
       paramRdd.run(spc)
       if(printDebugInfo){
         val loss = paramRdd.map(evalLoss).sum() / n_test
         println("%5.3f\t%5.8f".format(paramRdd.totalTimeEllapsed, loss))
-      } 
+      }
     }
-    
+
     val itemVec = data.context.parallelize(paramRdd.mapSharedVariable(sharedVar => {
       val vecs = new ListBuffer[(Int, Array[Double])]
       for(key <- sharedVar.variableArray.keySet){
@@ -93,7 +95,7 @@ class CollaborativeFiltering {
       }
       vecs.toArray
     }).first(), numPartitions)
-    
+
     val userVec = paramRdd.mapSharedVariable(sharedVar => {
       val vecs = new ListBuffer[(Int, Array[Double])]
       for(key <- sharedVar.variableArray.keySet){
@@ -105,29 +107,29 @@ class CollaborativeFiltering {
       }
       vecs.toArray
     }).flatMap(x => x.iterator)
-    
+
     new MatrixFactorizationModel(rank, userVec, itemVec)
   }
-  
-  private def setProcessFunction(){
+
+  private def setProcessFunction(): Unit = {
     val rank = this.rank
     val stepsize = this.stepsize
     val regParam = this.regParam
-    
-    this.process = (entry: UserRating, weight: Double, sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
+
+    this.process = (entry: UserRating, weight: Double, sharedVar : SharedVariableSet,  _: LocalVariableSet ) => {
       val user_id = entry.userId
       val ratings = entry.ratings
       val n = ratings.length
-      
+
       // re-compute the user's latent vector
       val vis = new Array[Array[Float]](n)
-      for(i <- 0 until n){
+      for(i <- 0 until n optimized){
         val vi = sharedVar.getFloatArray("I" + ratings(i)._1)
         vis(i) = vi
       }
-  
+
       val normalEquation = new NormalEquation(rank)
-      for(i <- 0 until n){
+      for(i <- 0 until n optimized){
         val rating = ratings(i)
         val vi = vis(i)
         val short_vi = new Array[Float](rank)
@@ -143,13 +145,13 @@ class CollaborativeFiltering {
         else new Array[Float](rank)
       }
       sharedVar.setArray("U"+user_id, vu)
-      
+
       // update the items' latent vector
-      for(i <- 0 until n){
+      for(i <- 0 until n optimized){
         val rating = ratings(i)
         val vi = vis(i)
         val vi_delta = new Array[Double](rank+1)
-        
+
         var vuvi = 0.0
         var j = 0
         while(j < rank){
@@ -157,7 +159,7 @@ class CollaborativeFiltering {
           j += 1
         }
         val scalar = rating._2 - vuvi
-        
+
         var visum = 0.0
         j = 0
         while(j < rank){
@@ -177,26 +179,26 @@ class CollaborativeFiltering {
       }
     }
   }
-  
-  private def setEvalFunction(){
+
+  private def setEvalFunction(): Unit = {
     val rank = this.rank
-    val stepsize = this.stepsize
+    // val stepsize = this.stepsize
     val regParam = this.regParam
-    
-    this.evalLoss = (entry: UserRating, sharedVar : SharedVariableSet,  localVar: LocalVariableSet ) => {
-      val user_id = entry.userId
+
+    this.evalLoss = (entry: UserRating, sharedVar : SharedVariableSet,  _: LocalVariableSet ) => {
+      // val user_id = entry.userId
       val ratings = entry.ratings
       val n = ratings.length
-      
+
       // re-compute the user's latent vector
       val vis = new Array[Array[Float]](n)
-      for(i <- 0 until n){
+      for(i <- 0 until n optimized){
         val vi = sharedVar.getFloatArray("I" + ratings(i)._1)
         vis(i) = vi
       }
-  
+
       val normalEquation = new NormalEquation(rank)
-      for(i <- 0 until n){
+      for(i <- 0 until n optimized){
         val rating = ratings(i)
         val vi = vis(i)
         val short_vi = new Array[Float](rank)
@@ -211,12 +213,12 @@ class CollaborativeFiltering {
         if(n > 0) (new CholeskySolver()).solve(normalEquation, regParam * ratings.length)
         else new Array[Float](rank)
       }
-      
+
       var loss = 0.0
       for(rating <- entry.validation){
         val y = rating._2
         val vi = sharedVar.getFloatArray("I" + rating._1)
-        
+
         var i = 0
         var vuvi = 0.0
         while(i < rank){
@@ -229,45 +231,45 @@ class CollaborativeFiltering {
       loss
     }
   }
-  
+
   /*
    * set the number of rounds that SGD runs and synchronizes.
    */
   def setNumIterations(iters: Int) = {
-    this.iters = iters 
-    this 
+    this.iters = iters
+    this
   }
-  
+
   /*
-   * set a scalar value denoting the stepsize of stochastic gradient descent. 
-   * Although the stepsize of individual iterates are adaptively chosen by AdaGrad, 
+   * set a scalar value denoting the stepsize of stochastic gradient descent.
+   * Although the stepsize of individual iterates are adaptively chosen by AdaGrad,
    * they will always be proportional to this parameter.
    */
   def setStepSize(stepsize: Double) = {
     this.stepsize = stepsize
     this
   }
-  
+
   def setRank(rank: Int) = {
     this.rank = rank
     this
   }
-  
+
   def setRegParam(regParam: Double) = {
     this.regParam = regParam
     this
   }
-  
+
   /*
-   * set the proportion of local data processed in each iteration. The default value is 1.0. 
-   * By choosing a smaller proportion, the algorithm will synchronize more frequently or 
+   * set the proportion of local data processed in each iteration. The default value is 1.0.
+   * By choosing a smaller proportion, the algorithm will synchronize more frequently or
    * terminate more quickly.
    */
   def setDataPerIteration(dataPerIteration: Double) = {
     this.dataPerIteration = dataPerIteration
     this
   }
-  
+
   /*
    * set the maximum number of threads to run. The default value is equal to the number of Parametrized RDD partitions.
    */
@@ -275,17 +277,17 @@ class CollaborativeFiltering {
     this.maxThreadNum = maxThreadNum
     this
   }
-  
+
   /*
-   * if the value is true, then the number of parallel threads will be chosen 
-   * automatically by the system but is always bounded by maxThreadNum. Otherwise, 
+   * if the value is true, then the number of parallel threads will be chosen
+   * automatically by the system but is always bounded by maxThreadNum. Otherwise,
    * the number of parallel threads will be equal to maxThreadNum.
    */
   def setAutoThread(autoThread : Boolean) = {
     this.autoThread = autoThread
     this
   }
-  
+
   /*
    * set if printing the debug info. The default value is false.
    */

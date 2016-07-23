@@ -1,6 +1,8 @@
 package splash.core
 
 import scala.collection.mutable._
+import scalaxy.loops._
+import scala.language.postfixOps
 
 class DeltaValue extends Serializable{
   var delta = 0.0f
@@ -22,22 +24,22 @@ class SharedVariableBackup extends Serializable{
 }
 
 class SharedVariableSet extends Serializable{
-  var variable = new HashMap[String, Float]
-  var delta = new HashMap[String, DeltaValue]
+  private var variable = new HashMap[String, Float]
+  private val delta = new HashMap[String, DeltaValue]
   var variableArray = new HashMap[String, Array[Float]]
-  var deltaArray = new HashMap[String, DeltaValueArray]
-  var loss = 0.0
-  
-  var delayedDelta : HashMap[(String, Int), Float] = null
+  private val deltaArray = new HashMap[String, DeltaValueArray]
+  // private val loss = 0.0
+
+  private var delayedDelta : HashMap[(String, Int), Float] = null
   var delayedAddShrinkFactor = 1.0f
-  var backup = new HashMap[String, SharedVariableBackup]
-  
+  private val backup = new HashMap[String, SharedVariableBackup]
+
   // variables for element counting
   var batchSize = 0
   var sampleIndex = 0
-  
+
   // backup methods
-  private[splash] def createBackup(key:String){
+  private[splash] def createBackup(key:String): Unit = {
     val bv = new SharedVariableBackup
     bv.variable = variable.clone()
     for(pair <- variableArray){
@@ -45,8 +47,8 @@ class SharedVariableSet extends Serializable{
     }
     backup.put(key, bv)
   }
-  
-  private[splash] def restoreFromBackup(key:String){
+
+  private[splash] def restoreFromBackup(key:String): Unit = {
     val bv = backup(key)
     variable = bv.variable.clone()
     variableArray.clear()
@@ -54,40 +56,40 @@ class SharedVariableSet extends Serializable{
       variableArray.put(pair._1, pair._2.clone())
     }
   }
-  
-  private[splash] def clearBackup(){
+
+  private[splash] def clearBackup(): Unit = {
     backup.clear()
   }
-  
+
   /*
    *  The following operations are not recommended since they may break consistency,
    *  don't use them unless necessary.
    */
-  def set(key:String, value:Double) {
+  def set(key:String, value:Double): Unit = {
     variable.put(key, value.toFloat)
   }
-  
+
   def getStaleArray(key:String) = {
-    variableArray.applyOrElse(key, (x:Any)=>null)
+    variableArray.applyOrElse(key, (_: Any)=>null)
   }
-  
-  def setArray(key:String, value:Array[Float]){
+
+  def setArray(key:String, value:Array[Float]): Unit = {
     variableArray.put(key, value)
   }
-  
-  def setArray(key:String, value:Array[Double]){
+
+  def setArray(key:String, value:Array[Double]): Unit = {
     val n = value.length
     val value_f = new Array[Float](n)
-    for(i <- 0 until n) value_f(i) = value(i).toFloat
+    for(i <- 0 until n optimized) value_f(i) = value(i).toFloat
     setArray(key, value_f)
   }
-  
-  def setArrayElement(key:String, index: Int, value: Double){
+
+  def setArrayElement(key:String, index: Int, value: Double): Unit = {
     val varArray = variableArray(key)
     varArray(index) = value.toFloat
   }
-  
-  def setArrayElements(key:String, indices: Array[Int], values:Array[Float]){
+
+  def setArrayElements(key:String, indices: Array[Int], values:Array[Float]): Unit = {
     val varArray = variableArray(key)
     val n = varArray.length
     var i = 0
@@ -96,16 +98,15 @@ class SharedVariableSet extends Serializable{
       i += 1
     }
   }
-  
-  def setArrayElements(key:String, indices: Array[Int], values:Array[Double]){
+
+  def setArrayElements(key:String, indices: Array[Int], values:Array[Double]): Unit = {
     val n = values.length
     val value_f = new Array[Float](n)
-    for(i <- 0 until n) value_f(i) = values(i).toFloat
+    for(i <- 0 until n optimized) value_f(i) = values(i).toFloat
     setArrayElements(key, indices, value_f)
   }
-  
-  def executeDelayedAddArrayElement(key:String, index:Int, value:Double)
-  {
+
+  def executeDelayedAddArrayElement(key:String, index:Int, value:Double): Unit = {
     if(deltaArray.contains(key)){
       val deltaValueObject = deltaArray(key)
       val dv = deltaValueObject.array(index)
@@ -118,14 +119,14 @@ class SharedVariableSet extends Serializable{
       deltaValueArray(index).unweightedDelta = value.toFloat
     }
   }
-  
+
   /*
-   * Declare an array associated with the key. The length argument indicates the 
-   * dimension of the array. The array has to be declared before manipulated. 
-   * Generally speaking, manipulating an array of real numbers is faster than 
+   * Declare an array associated with the key. The length argument indicates the
+   * dimension of the array. The array has to be declared before manipulated.
+   * Generally speaking, manipulating an array of real numbers is faster than
    * manipulating the same number of key-value pairs.
    */
-  def declareArray(key:String, length:Int){
+  def declareArray(key:String, length:Int): Unit = {
     require(length > 0, "Array length must be positive.")
     val deltaValueArrayObject = new DeltaValueArray
     deltaValueArrayObject.array = new Array[DeltaValue](length)
@@ -136,15 +137,15 @@ class SharedVariableSet extends Serializable{
     }
     deltaArray.put(key, deltaValueArrayObject)
   }
-  
+
   /*
-   * The system will not synchronize this variable at the next round of synchronization. 
-   * This will improve the communication efficiency, but may cause unpredictable consistency 
-   * issues. Don’t register a variable as dontSync unless you are sure that it will never 
-   * be used by other partitions. The dontSync declaration is only effective at the current 
+   * The system will not synchronize this variable at the next round of synchronization.
+   * This will improve the communication efficiency, but may cause unpredictable consistency
+   * issues. Don’t register a variable as dontSync unless you are sure that it will never
+   * be used by other partitions. The dontSync declaration is only effective at the current
    * iteration.
    */
-  def dontSync(key:String){
+  def dontSync(key:String): Unit = {
     if(delta.contains(key)){
       delta(key).sync = false
     }
@@ -154,11 +155,11 @@ class SharedVariableSet extends Serializable{
       delta.put(key, dv)
     }
   }
-  
+
   /*
    * The same as dontSync, but the object is an array.
    */
-  def dontSyncArray(key:String){
+  def dontSyncArray(key:String): Unit = {
     if(deltaArray.contains(key)){
       deltaArray(key).sync = false
     }
@@ -167,33 +168,33 @@ class SharedVariableSet extends Serializable{
       deltaArray(key).sync = false
     }
   }
-  
-  private def refreshDeltaArrayElementPrefactor(dv: DeltaValue, new_factor:Float){
+
+  private def refreshDeltaArrayElementPrefactor(dv: DeltaValue, new_factor:Float): Unit = {
     if(dv.prefactor != new_factor){
       dv.delta *= new_factor / dv.prefactor
       dv.unweightedDelta *= new_factor / dv.prefactor
       dv.prefactor = new_factor
     }
   }
-  
+
   /*
    * Return the value of the key. The initial value is 0.
    */
   def get(key:String) = {
     if(delta.contains(key)){
       val dv = delta(key)
-      dv.prefactor * variable.applyOrElse(key, (x:Any) => 0.0f) + dv.delta.toDouble + dv.unweightedDelta
+      dv.prefactor * variable.applyOrElse(key, (_:Any) => 0.0f) + dv.delta.toDouble + dv.unweightedDelta
     }
     else{
-      variable.applyOrElse(key, (x:Any) => 0.0f)
+      variable.applyOrElse(key, (_:Any) => 0.0f)
     }
   }
-  
+
   /*
    * Return the array associated with the key. It will return null if the array has not been declared.
    */
   def getArray(key:String) = {
-    val varArray = variableArray.applyOrElse(key, (x:Any) => null)
+    val varArray = variableArray.applyOrElse(key, (_:Any) => null)
     if(deltaArray.contains(key)){
       val deltaValueObject = deltaArray(key)
       val n = deltaValueObject.array.length
@@ -236,9 +237,9 @@ class SharedVariableSet extends Serializable{
       else null
     }
   }
-  
+
   def getFloatArray(key:String) = {
-    val varArray = variableArray.applyOrElse(key, (x:Any) => null)
+    val varArray = variableArray.applyOrElse(key, (_: Any) => null)
     if(deltaArray.contains(key)){
       val deltaValueObject = deltaArray(key)
       val n = deltaValueObject.array.length
@@ -281,12 +282,12 @@ class SharedVariableSet extends Serializable{
       else null
     }
   }
-  
+
   /*
    * Return the array element with index ind. It will return 0 if the array has not been declared.
    */
   def getArrayElement(key:String, index:Int) = {
-    val varArray = variableArray.applyOrElse(key, (x:Any) => null)
+    val varArray = variableArray.applyOrElse(key, (_: Any) => null)
     val varArrayElem = {
       if(varArray != null) varArray(index)
       else 0.0
@@ -301,13 +302,13 @@ class SharedVariableSet extends Serializable{
       varArrayElem
     }
   }
-  
+
   /*
    * Return array elements with specified indices.
    */
   def getArrayElements(key:String, indices:Array[Int]) = {
     val values = new Array[Double](indices.length)
-    val varArray = variableArray.applyOrElse(key, (x:Any) => null)
+    val varArray = variableArray.applyOrElse(key, (_:Any) => null)
     val n = indices.length
     if(varArray != null){
       var i = 0
@@ -337,11 +338,11 @@ class SharedVariableSet extends Serializable{
     }
     values
   }
-  
+
   /*
    * Add deltaValue to the value of the key.
    */
-  def add(key:String, deltaValue:Double) {
+  def add(key:String, deltaValue:Double): Unit = {
     if(delta.contains(key)){
       val dv = delta(key)
       dv.delta += deltaValue.toFloat
@@ -352,11 +353,11 @@ class SharedVariableSet extends Serializable{
       delta.put(key, dv)
     }
   }
-  
+
   /*
    * Add deltaValue to the array associated with the key.
    */
-  def addArray(key:String, deltaValue:Array[Double]){
+  def addArray(key:String, deltaValue:Array[Double]): Unit = {
     val n = deltaValue.length
     if(deltaArray.contains(key)){
       val deltaValueObject =deltaArray(key)
@@ -379,11 +380,11 @@ class SharedVariableSet extends Serializable{
       }
     }
   }
-  
+
   /*
    * Add deltaValue to the array element with index.
    */
-  def addArrayElement(key:String, index: Int, deltaValue:Double){
+  def addArrayElement(key:String, index: Int, deltaValue:Double): Unit = {
     if(deltaArray.contains(key)){
       val deltaValueObject = deltaArray(key)
       val dv = deltaValueObject.array(index)
@@ -396,11 +397,11 @@ class SharedVariableSet extends Serializable{
       deltaValueArray(index).delta = deltaValue.toFloat
     }
   }
-  
+
   /*
    * Add deltaValue to the specified indices. The dimensions of indices and deltaValue should be equal.
    */
-  def addArrayElements(key:String, indices: Array[Int], deltaValue: Array[Double]){
+  def addArrayElements(key:String, indices: Array[Int], deltaValue: Array[Double]): Unit = {
     require(indices.length == deltaValue.length, "indices.length must be equal to deltaValue.length.")
     val n = indices.length
     if(deltaArray.contains(key)){
@@ -423,8 +424,8 @@ class SharedVariableSet extends Serializable{
       }
     }
   }
-  
-  private def insertDelayedDelta(key:String, index: Int, value:Float) {
+
+  private def insertDelayedDelta(key:String, index: Int, value:Float): Unit = {
     if(delayedDelta == null){
       delayedDelta = new HashMap[(String, Int), Float]
     }
@@ -435,38 +436,37 @@ class SharedVariableSet extends Serializable{
       delayedDelta.put((key,index), value * delayedAddShrinkFactor)
     }
   }
-  
+
   /*
-   * Same as add, but the operation will not be executed instantly. Instead, it will 
-   * be executed at the next time that the same element is processed. The delayed 
-   * operation is useful for reversing a previous operation on the same element, 
+   * Same as add, but the operation will not be executed instantly. Instead, it will
+   * be executed at the next time that the same element is processed. The delayed
+   * operation is useful for reversing a previous operation on the same element,
    * or for passing information to the future.
    */
-  def delayedAdd(key:String, deltaValue:Double) {
+  def delayedAdd(key:String, deltaValue:Double): Unit = {
     insertDelayedDelta(key, -1, deltaValue.toFloat)
   }
-  
+
   /*
    * The same as addArray, but the operation will not be executed until the next time the same element is processed.
    */
-  def delayedAddArray(key:String, deltaValue:Array[Double]){
-    for(i <- 0 until deltaValue.length){
+  def delayedAddArray(key:String, deltaValue:Array[Double]): Unit = {
+    for(i <- 0 until deltaValue.length optimized){
       insertDelayedDelta(key, i, deltaValue(i).toFloat)
     }
   }
-  
+
   /*
    * The same as addArrayElement, but the operation will not be executed until the next time the same element is processed.
    */
-  def delayedAddArrayElement(key:String, index: Int, deltaValue:Double) {
+  def delayedAddArrayElement(key:String, index: Int, deltaValue:Double): Unit = {
     insertDelayedDelta(key, index, deltaValue.toFloat)
   }
-  
+
   /*
    * Multiply the value of the key by gamma.
    */
-  def multiply(key:String, gamma:Double)
-  {
+  def multiply(key:String, gamma:Double): Unit = {
     val adjusted_value = {
       if(gamma == 0) 1e-16f
       else gamma.toFloat
@@ -483,12 +483,12 @@ class SharedVariableSet extends Serializable{
       delta.put(key, dv)
     }
   }
-  
+
   /*
-   * Multiply all elements of the array by a real number gamma. The computation complexity 
+   * Multiply all elements of the array by a real number gamma. The computation complexity
    * of this operation is O(1), independent of the dimension of the array.
    */
-  def multiplyArray(key:String, gamma:Double){
+  def multiplyArray(key:String, gamma:Double): Unit = {
     val adjusted_value = {
       if(gamma == 0) 1e-16f
       else gamma.toFloat
@@ -503,15 +503,14 @@ class SharedVariableSet extends Serializable{
       deltaArray(key).multiplied = true
     }
   }
-  
-  private[splash] def systemExecuteDelayedAdd(ops : Array[((String,Int), Float)])
-  {
+
+  private[splash] def systemExecuteDelayedAdd(ops : Array[((String,Int), Float)]): Unit = {
     if(ops != null){
       for(operator <- ops){
         val key = operator._1._1
         val index = operator._1._2
         val value = operator._2
-        
+
         if(index == -1){ // add to variable
           if(delta.contains(key)){
             val dv = delta(key)
@@ -539,8 +538,8 @@ class SharedVariableSet extends Serializable{
       }
     }
   }
-  
-  private[splash] def setDelayedDelta(ops : Array[((String, Int), Float)]){
+
+  private[splash] def setDelayedDelta(ops : Array[((String, Int), Float)]): Unit = {
     if(ops != null){
       if(delayedDelta != null){
         delayedDelta.clear()
@@ -553,13 +552,13 @@ class SharedVariableSet extends Serializable{
       }
     }
   }
-  
-  private[splash] def clearDelayedDelta(){
+
+  private[splash] def clearDelayedDelta(): Unit = {
     if(delayedDelta != null){
       delayedDelta.clear()
     }
   }
-  
+
   private[splash] def exportDelayedDelta() = {
     if(delayedDelta == null){
       null
@@ -570,13 +569,13 @@ class SharedVariableSet extends Serializable{
       ops
     }
   }
-  
-  private[splash] def updateVariableByProposal(prop:Proposal){
+
+  private[splash] def updateVariableByProposal(prop:Proposal): Unit = {
     for( pair <- prop.delta ){
       val key = pair._1
-      variable.put(key, pair._2.prefactor * variable.applyOrElse(key, (x:Any) => 0.0f) + pair._2.delta )
+      variable.put(key, pair._2.prefactor * variable.applyOrElse(key, (_: Any) => 0.0f) + pair._2.delta )
     }
-    
+
     for( pair <- prop.deltaArray ){
       val key = pair._1
       if(variableArray.contains(key)){
@@ -611,23 +610,23 @@ class SharedVariableSet extends Serializable{
     delta.clear()
     deltaArray.clear()
   }
-  
+
   private[splash] def exportProposal(weight : Float) = {
     val prop = new Proposal
-    
+
     for(pair <- delta){
       if(pair._2.sync){
         val pdv = new ProposalDeltaValue
         pdv.prefactor = pair._2.prefactor
-        pdv.delta = pair._2.delta / weight + pair._2.unweightedDelta 
+        pdv.delta = pair._2.delta / weight + pair._2.unweightedDelta
         prop.delta.put(pair._1, pdv)
       }
       else{
         val key = pair._1
-        variable.put(key, pair._2.prefactor * variable.applyOrElse(key, (x:Any) => 0.0f) + pair._2.delta / weight + pair._2.unweightedDelta  )
+        variable.put(key, pair._2.prefactor * variable.applyOrElse(key, (_: Any) => 0.0f) + pair._2.delta / weight + pair._2.unweightedDelta  )
       }
     }
-    
+
     for(pair <- deltaArray){
       val n = pair._2.array.length
       if(pair._2.sync){

@@ -5,7 +5,7 @@ class SplashConf {
   var dataPerIteration = 1.0
   var autoThread = true
   var treeReduce = true
-  
+
   /*
    * set a property
    */
@@ -25,7 +25,7 @@ class SplashConf {
     }
     this
   }
-  
+
   /*
    * set a property
    */
@@ -34,12 +34,12 @@ class SplashConf {
       maxThreadNum = value.toInt
     }
     if(key.equals("data.per.iteration")){
-      require(value.toDouble > 0 && value.toDouble <= 1, "data.per.iteration should belong to (0,1]")
-      dataPerIteration = value.toDouble
+      require(value > 0D && value <= 1D, "data.per.iteration should belong to (0,1]")
+      dataPerIteration = value
     }
     this
   }
-  
+
   /*
    * set a property
    */

@@ -1,5 +1,7 @@
 package splash.optimization
 import org.apache.spark.mllib.linalg.{Vectors,Vector,DenseVector,SparseVector}
+import scalaxy.loops._
+import scala.language.postfixOps
 
 object Util {
   /**
@@ -21,7 +23,7 @@ object Util {
     val xValues = x.values
     val n = xValues.length
     val yValues = new Array[Double](n)
-    
+
     var k = 0
     while (k < n) {
       yValues(k) = a * xValues(k)
@@ -38,7 +40,7 @@ object Util {
     val xValues = x.values
     val n = xValues.length
     val yValues = new Array[Double](n)
-    
+
     var k = 0
     while (k < n) {
       yValues(k) = a * xValues(k)
@@ -76,7 +78,7 @@ object Util {
     val xValue = x.values
     val yValue = y.values
     var sum = 0.0
-    for(i <- 0 until n){
+    for(i <- 0 until n optimized){
       sum += xValue(i) * yValue(i)
     }
     sum
@@ -128,7 +130,7 @@ object Util {
     }
     sum
   }
-  
+
   /**
    * When `x` is positive and large, computing `math.log(1 + math.exp(x))` will lead to arithmetic
    * overflow. This will happen when `x > 709.78` which is not a very large number.
