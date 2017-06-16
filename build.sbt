@@ -2,16 +2,16 @@ name := "splash"
 
 version := "0.2.0"
 
-scalaVersion := "2.10.6"
-crossScalaVersions := Seq("2.10.6", "2.11.8")
+scalaVersion := "2.11.1"
+crossScalaVersions := Seq("2.10.6", "2.11.11")
 
 artifactName := { (sv: ScalaVersion, module: ModuleID, artifact: Artifact) =>
   artifact.name + "-" + module.revision + "." + artifact.extension
 }
 
-libraryDependencies += "org.apache.spark" %% "spark-core" % "1.6.1" // % "provided"
+libraryDependencies += "org.apache.spark" %% "spark-core" % "2.1.0" // % "provided"
 
-libraryDependencies += "org.apache.spark" %% "spark-mllib" % "1.6.1" // % "provided"
+libraryDependencies += "org.apache.spark" %% "spark-mllib" % "2.1.0" // % "provided"
 
 libraryDependencies  ++= Seq(
             "com.nativelibs4java" %% "scalaxy-loops" % "[0.3.4,)",
